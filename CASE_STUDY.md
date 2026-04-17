@@ -143,7 +143,7 @@ npx ts-node src/run.ts ./your-project
 
 The runner finds all `.ts`, `.tsx`, `.js`, `.jsx` files, skips anything with no ethers imports, runs all 5 transforms in the correct order, and prints a summary with per-transform change counts and a list of any files that need AI review.
 
-Source and full documentation: **[https://github.com/YOUR_USERNAME/ethers-v5-to-v6-codemod](https://github.com/YOUR_USERNAME/ethers-v5-to-v6-codemod)**
+Source and full documentation: **[https://github.com/Chinyereee/ethers-v5-to-v6-codemod](https://github.com/Chinyereee/ethers-v5-to-v6-codemod)**
 
 ---
 

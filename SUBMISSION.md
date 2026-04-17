@@ -72,5 +72,5 @@ real input/output pairs. Run with `npm test`.
 npx ts-node src/run.ts ./your-project
 
 ## Links
-- GitHub: (add your repo URL)
+- GitHub: https://github.com/Chinyereee/ethers-v5-to-v6-codemod
 - Case study: (add Dev.to link after publishing)
