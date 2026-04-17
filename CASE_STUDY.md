@@ -1,6 +1,6 @@
-# We automated 83% of the ethers.js v5 → v6 migration using codemods and AI
+# I automated 83% of the ethers.js v5 → v6 migration using codemods and AI
 
-ethers v6 dropped a breaking change on every project that touched BigNumber, utils, or providers — which is basically every DeFi frontend ever written. The migration guide listed over 40 breaking changes. Some were simple renames. Some required understanding whether a variable was a BigNumber before deciding what to do with it. Doing this by hand across 31 files is exactly the kind of work that makes engineers quit. We built a codemod pipeline to handle the mechanical ones automatically — and wrote AI prompts for the rest.
+ethers v6 dropped a breaking change on every project that touched BigNumber, utils, or providers — which is basically every DeFi frontend ever written. The migration guide listed over 40 breaking changes. Some were simple renames. Some required understanding whether a variable was a BigNumber before deciding what to do with it. Doing this by hand across 31 files is exactly the kind of work that makes engineers quit. I built a codemod pipeline to handle the mechanical ones automatically — and wrote AI prompts for the rest.
 
 ---
 
@@ -14,7 +14,7 @@ ethers v6 dropped a breaking change on every project that touched BigNumber, uti
 
 ---
 
-## Our approach: codemods + AI
+## My approach: codemods + AI
 
 The insight that made this tractable is recognizing that these changes fall into two completely different categories.
 
@@ -26,7 +26,7 @@ The combination is the only approach that scales. Codemods alone leave the seman
 
 ---
 
-## The 5 transforms we built
+## The 5 transforms I built
 
 **rename-utils** — Lifts all 17 `ethers.utils.*` functions to the top-level namespace. Handles both `import * as ethers` and `import { utils }` styles, rewrites the import declaration, and covers the two structural changes.
 
@@ -64,7 +64,7 @@ const provider = new ethers.BrowserProvider(window.ethereum);
 let p: ethers.JsonRpcProvider;
 ```
 
-**gasPrice-to-feeData** — Rewrites `await provider.getGasPrice()` by replacing the entire `AwaitExpression` node. This means the parentheses around the await are handled automatically by recast's printer based on operator precedence — we don't insert them manually.
+**gasPrice-to-feeData** — Rewrites `await provider.getGasPrice()` by replacing the entire `AwaitExpression` node. This means the parentheses around the await are handled automatically by recast's printer based on operator precedence — I don't insert them manually.
 
 ```ts
 // before
@@ -88,7 +88,7 @@ import { Contract } from 'ethers';
 
 ## Does it actually work on real code?
 
-We ran the pipeline against [Uniswap/v3-periphery](https://github.com/Uniswap/v3-periphery), which is on ethers `^5.0.8` — a production-grade codebase we had no hand in writing.
+I ran the pipeline against [Uniswap/v3-periphery](https://github.com/Uniswap/v3-periphery), which is on ethers `^5.0.8` — a production-grade codebase I had no hand in writing.
 
 | Metric | Result |
 |--------|--------|
@@ -99,9 +99,9 @@ We ran the pipeline against [Uniswap/v3-periphery](https://github.com/Uniswap/v3
 | Automated coverage | **83.3%** |
 | False positives | **0** |
 
-We verified every change with `git diff` before counting. The 0 false positives claim we validated separately: running the same pipeline against scaffold-eth-2 (already on ethers v6) produced 0 changes and 0 TODOs.
+I verified every change with `git diff` before counting. The 0 false positives claim I validated separately: running the same pipeline against scaffold-eth-2 (already on ethers v6) produced 0 changes and 0 TODOs.
 
-One honest limitation: the codemod only tracks direct imports from `'ethers'`. If your project wraps ethers behind an internal utility library or re-exports it from an index file, the transforms won't fire. We decided false negatives (missed cases) are safer than false positives (broken code), so the conservative approach was the right call.
+One honest limitation: the codemod only tracks direct imports from `'ethers'`. If your project wraps ethers behind an internal utility library or re-exports it from an index file, the transforms won't fire. I decided false negatives (missed cases) are safer than false positives (broken code), so the conservative approach was the right call.
 
 ---
 
@@ -114,7 +114,7 @@ The 3 flagged files — `PairFlash.spec.ts`, `snapshotGasCost.ts`, `TickLens.spe
 const result = returnedFromContract.toNumber();
 ```
 
-For these, we used this prompt:
+For these, I used this prompt:
 
 ```
 I'm migrating from ethers.js v5 to v6. In v6, BigNumber is replaced by native bigint.
@@ -155,4 +155,4 @@ This is what software maintenance should look like. Mechanical changes — the o
 
 The weekend you were dreading becomes an afternoon. Most of it spent verifying a diff, not writing one.
 
-A note on the test repo choice: we tried scaffold-eth-2 first. It was already on v6 — which was actually useful, it confirmed the codemod produces zero changes on modern code. But we needed a real v5 target. Uniswap v3-periphery is widely known, actively maintained, and represents how real protocols actually use ethers. It felt like the honest benchmark to report against.
+A note on the test repo choice: I tried scaffold-eth-2 first. It was already on v6 — which was actually useful, it confirmed the codemod produces zero changes on modern code. But I needed a real v5 target. Uniswap v3-periphery is widely known, actively maintained, and represents how real protocols actually use ethers. It felt like the honest benchmark to report against.
