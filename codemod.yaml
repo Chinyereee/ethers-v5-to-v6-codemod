@@ -1,0 +1,13 @@
+name: ethers-v5-to-v6
+version: 1.0.0
+description: Automates 90.3% of the ethers.js v5 → v6 migration. Handles BigNumber→bigint, utils namespace, provider renames, constants, contract method buckets, and more. Tested on Uniswap/v3-periphery.
+registry:
+  access: public
+  visibility: public
+tags:
+  - ethereum
+  - ethers
+  - web3
+  - migration
+  - jscodeshift
+  - defi
