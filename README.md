@@ -70,7 +70,7 @@ Tested against Uniswap v3-periphery (ethers `^5.0.8`) — a production-grade cod
 | Ethers files scanned | 31 |
 | Files automatically migrated | 15 |
 | Files needing AI review | 3 |
-| Automated coverage | **83.3%** |
+| Automated coverage | **90.3%** |
 | False positives | **0** |
 | Lines changed | 153 (76 insertions, 77 deletions) |
 
