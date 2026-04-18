@@ -1,18 +1,17 @@
 import * as ethers from 'ethers';
 
-async function example(provider: ethers.providers.Provider, signer: ethers.Signer) {
-  const gas = (await provider.getFeeData()).gasPrice;
+async function example(provider: any) {
+  const gas = await provider.getGasPrice();
 
-  const tx = await signer.sendTransaction({
+  const txOpts = {
     to: recipient,
     value: amount,
-    gasPrice: (await provider.getFeeData()).gasPrice,
-  });
+    gasPrice: await provider.getGasPrice(),
+  };
 
-  const gasFromSigner = (await signer.getFeeData()).gasPrice;
+  const gasFromSigner = await provider.getGasPrice();
 
-  // TODO: ethers v6 - replace getGasPrice() with getFeeData() and access .gasPrice, .maxFeePerGas, or .maxPriorityFeePerGas
   const noAwait = provider.getGasPrice();
 
-  let feeData: ethers.FeeData;
+  let feeData: ethers.providers.FeeData;
 }
