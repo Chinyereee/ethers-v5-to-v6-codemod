@@ -68,11 +68,11 @@ Tested against Uniswap v3-periphery (ethers `^5.0.8`) — a production-grade cod
 |--------|--------|
 | Repository | [Uniswap/v3-periphery](https://github.com/Uniswap/v3-periphery) |
 | Ethers files scanned | 31 |
-| Files automatically migrated | 15 |
+| Files automatically migrated | 28 |
 | Files needing AI review | 3 |
 | Automated coverage | **90.3%** |
 | False positives | **0** |
-| Lines changed | 153 (76 insertions, 77 deletions) |
+| Lines changed | 502 (231 insertions, 271 deletions) |
 
 Zero-false-positive claim validated separately by running against scaffold-eth-2 (already on ethers v6): 0 files changed, 0 TODOs.
 
