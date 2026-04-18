@@ -6,6 +6,9 @@ import type { FileInfo, API, Transform } from 'jscodeshift';
 import renameUtils from './rename-utils';
 import bigNumberToBigint from './bigNumber-to-bigint';
 import renameProviders from './rename-providers';
+import renameConstants from './rename-constants';
+import renameContractMethods from './rename-contract-methods';
+import renameProviderMethods from './rename-provider-methods';
 import gasPriceToFeeData from './gasPrice-to-feeData';
 import updateImports from './update-imports';
 
@@ -15,6 +18,9 @@ export {
   renameUtils,
   bigNumberToBigint,
   renameProviders,
+  renameConstants,
+  renameContractMethods,
+  renameProviderMethods,
   gasPriceToFeeData,
   updateImports,
 };
@@ -28,12 +34,16 @@ export {
  *  - rename-utils must run before update-imports (removes `utils` usages first)
  *  - bigNumber-to-bigint must run before update-imports (removes `BigNumber` usages)
  *  - rename-providers must run before update-imports (removes `providers` usages)
+ *  - rename-constants must run before update-imports (removes `constants` usages)
  *  - update-imports must run last (cleans up any remaining deprecated specifiers)
  */
 const PIPELINE: readonly Transform[] = [
   renameUtils,
   bigNumberToBigint,
   renameProviders,
+  renameConstants,
+  renameContractMethods,
+  renameProviderMethods,
   gasPriceToFeeData,
   updateImports,
 ];
@@ -96,6 +106,9 @@ export function runAll(
     'rename-utils',
     'bigNumber-to-bigint',
     'rename-providers',
+    'rename-constants',
+    'rename-contract-methods',
+    'rename-provider-methods',
     'gasPrice-to-feeData',
     'update-imports',
   ];

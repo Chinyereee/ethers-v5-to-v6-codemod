@@ -25,10 +25,22 @@ const UTILS_TO_ETHERS: Record<string, string> = {
   arrayify: 'getBytes',
   hexZeroPad: 'zeroPadValue',
   zeroPad: 'zeroPadBytes',
+  // bytes32 string helpers
+  formatBytes32String: 'encodeBytes32String',
+  parseBytes32String: 'decodeBytes32String',
+  // data manipulation
+  hexDataSlice: 'dataSlice',
+  hexValue: 'toQuantity',
+  // solidity non-standard packed
+  solidityPack: 'solidityPacked',
+  solidityKeccak256: 'solidityPackedKeccak256',
+  soliditySha256: 'solidityPackedSha256',
 };
 
 // Special: utils.splitSignature(x) -> ethers.Signature.from(x)
 const SPLIT_SIGNATURE = 'splitSignature';
+// Special: utils.joinSignature(x) -> ethers.Signature.from(x).serialized
+const JOIN_SIGNATURE = 'joinSignature';
 // Special: ethers.utils.defaultAbiCoder -> ethers.AbiCoder.defaultAbiCoder()
 const DEFAULT_ABI_CODER = 'defaultAbiCoder';
 
@@ -131,6 +143,28 @@ export default function transform(file: FileInfo, api: API): string {
         ethersNamespacedCall('Signature', 'from', path.node.arguments)
       );
 
+    // Handle ethers.utils.joinSignature(x) -> ethers.Signature.from(x).serialized
+    root
+      .find(j.CallExpression, (node: CallExpression) => {
+        const callee = node.callee;
+        return (
+          callee.type === 'MemberExpression' &&
+          (callee as MemberExpression).object.type === 'MemberExpression' &&
+          ((callee as MemberExpression).object as MemberExpression).object.type === 'Identifier' &&
+          (((callee as MemberExpression).object as MemberExpression).object as { name: string }).name === 'ethers' &&
+          ((callee as MemberExpression).object as MemberExpression).property.type === 'Identifier' &&
+          (((callee as MemberExpression).object as MemberExpression).property as { name: string }).name === 'utils' &&
+          (callee as MemberExpression).property.type === 'Identifier' &&
+          ((callee as MemberExpression).property as { name: string }).name === JOIN_SIGNATURE
+        );
+      })
+      .replaceWith((path: ASTPath<CallExpression>) =>
+        j.memberExpression(
+          ethersNamespacedCall('Signature', 'from', path.node.arguments),
+          j.identifier('serialized')
+        )
+      );
+
     // Handle all other ethers.utils.X(...) -> ethers.Y(...)
     root
       .find(j.CallExpression, (node: CallExpression) => {
@@ -198,6 +232,26 @@ export default function transform(file: FileInfo, api: API): string {
       .replaceWith((path: ASTPath<CallExpression>) => {
         didTransform = true;
         return ethersNamespacedCall('Signature', 'from', path.node.arguments);
+      });
+
+    // utils.joinSignature(x) -> ethers.Signature.from(x).serialized
+    root
+      .find(j.CallExpression, (node: CallExpression) => {
+        const callee = node.callee;
+        return (
+          callee.type === 'MemberExpression' &&
+          (callee as MemberExpression).object.type === 'Identifier' &&
+          ((callee as MemberExpression).object as { name: string }).name === 'utils' &&
+          (callee as MemberExpression).property.type === 'Identifier' &&
+          ((callee as MemberExpression).property as { name: string }).name === JOIN_SIGNATURE
+        );
+      })
+      .replaceWith((path: ASTPath<CallExpression>) => {
+        didTransform = true;
+        return j.memberExpression(
+          ethersNamespacedCall('Signature', 'from', path.node.arguments),
+          j.identifier('serialized')
+        );
       });
 
     // utils.X(...) -> ethers.Y(...)

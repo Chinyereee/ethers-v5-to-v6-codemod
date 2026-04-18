@@ -15,17 +15,23 @@ import type { FileInfo, Transform } from 'jscodeshift';
 import renameUtils from './transforms/rename-utils';
 import bigNumberToBigint from './transforms/bigNumber-to-bigint';
 import renameProviders from './transforms/rename-providers';
+import renameConstants from './transforms/rename-constants';
+import renameContractMethods from './transforms/rename-contract-methods';
+import renameProviderMethods from './transforms/rename-provider-methods';
 import gasPriceToFeeData from './transforms/gasPrice-to-feeData';
 import updateImports from './transforms/update-imports';
 
 // ── Transform pipeline ───────────────────────────────────────────────────────
 
 const PIPELINE: Array<{ name: string; fn: Transform }> = [
-  { name: 'rename-utils',          fn: renameUtils },
-  { name: 'bigNumber-to-bigint',   fn: bigNumberToBigint },
-  { name: 'rename-providers',      fn: renameProviders },
-  { name: 'gasPrice-to-feeData',   fn: gasPriceToFeeData },
-  { name: 'update-imports',        fn: updateImports },
+  { name: 'rename-utils',            fn: renameUtils },
+  { name: 'bigNumber-to-bigint',     fn: bigNumberToBigint },
+  { name: 'rename-providers',        fn: renameProviders },
+  { name: 'rename-constants',        fn: renameConstants },
+  { name: 'rename-contract-methods', fn: renameContractMethods },
+  { name: 'rename-provider-methods', fn: renameProviderMethods },
+  { name: 'gasPrice-to-feeData',     fn: gasPriceToFeeData },
+  { name: 'update-imports',          fn: updateImports },
 ];
 
 // ── Config ───────────────────────────────────────────────────────────────────

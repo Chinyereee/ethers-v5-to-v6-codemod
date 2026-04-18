@@ -8,6 +8,9 @@ import type {
   TSTypeReference,
 } from 'jscodeshift';
 
+const STATIC_PROVIDER_TODO =
+  ' TODO: ethers v6 - if StaticJsonRpcProvider was called with a network argument, add { staticNetwork: network } as third arg to JsonRpcProvider to preserve static behavior';
+
 // v5 providers.X → v6 ethers.Y  (StaticJsonRpcProvider merged into JsonRpcProvider)
 const PROVIDER_MAP: Record<string, string> = {
   Web3Provider: 'BrowserProvider',
@@ -147,6 +150,23 @@ export default function transform(file: FileInfo, api: API): string {
         const callee = path.node.callee as MemberExpression;
         const v5Name = (callee.property as { name: string }).name;
         const v6Name = PROVIDER_MAP[v5Name];
+        if (v5Name === 'StaticJsonRpcProvider') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let current: ASTPath<any> = path as ASTPath<any>;
+          while (current.parent && !j.Statement.check(current.node)) {
+            current = current.parent;
+          }
+          if (j.Statement.check(current.node)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const existing: any[] = current.node.comments ?? [];
+            if (!existing.some((c: { value?: string }) => c.value?.includes('StaticJsonRpcProvider'))) {
+              current.node.comments = [
+                { type: 'CommentLine', value: STATIC_PROVIDER_TODO, leading: true, trailing: false },
+                ...existing,
+              ];
+            }
+          }
+        }
         return j.newExpression(
           j.memberExpression(j.identifier('ethers'), j.identifier(v6Name)),
           path.node.arguments
@@ -185,6 +205,23 @@ export default function transform(file: FileInfo, api: API): string {
         const v5Name = (callee.property as { name: string }).name;
         const v6Name = PROVIDER_MAP[v5Name];
         usedV6Names.add(v6Name);
+        if (v5Name === 'StaticJsonRpcProvider') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let current: ASTPath<any> = path as ASTPath<any>;
+          while (current.parent && !j.Statement.check(current.node)) {
+            current = current.parent;
+          }
+          if (j.Statement.check(current.node)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const existing: any[] = current.node.comments ?? [];
+            if (!existing.some((c: { value?: string }) => c.value?.includes('StaticJsonRpcProvider'))) {
+              current.node.comments = [
+                { type: 'CommentLine', value: STATIC_PROVIDER_TODO, leading: true, trailing: false },
+                ...existing,
+              ];
+            }
+          }
+        }
         return j.newExpression(j.identifier(v6Name), path.node.arguments);
       });
 

@@ -5,20 +5,26 @@ codebase line by line. There had to be a better way than ctrl+F and pray.
 
 ## What it does
 
-Five jscodeshift transforms that handle the mechanical parts of the 
+Eight jscodeshift transforms that handle the mechanical parts of the 
 ethers v5 → v6 migration automatically — the stuff you'd otherwise 
 do by hand across every file:
 
-- `ethers.utils.*` → flattened v6 equivalents (17 renames, including 
-  arrayify→getBytes and hexZeroPad→zeroPadValue which catch people out)
+- `ethers.utils.*` → flattened v6 equivalents (24 renames including 
+  arrayify→getBytes, solidityPack→solidityPacked, joinSignature→Signature.from)
 - `ethers.BigNumber.from()` → native `BigInt()` with method chain 
   handling — .add(), .sub(), .mul(), chained arithmetic, the works
 - `ethers.providers.*` → v6 provider names (Web3Provider became 
   BrowserProvider, StaticJsonRpcProvider merged into JsonRpcProvider)
+- `ethers.constants.*` → v6 equivalents (AddressZero→ZeroAddress, 
+  numeric constants→bigint literals)
+- `contract.callStatic.foo()` → `contract.foo.staticCall()` and the 
+  other 3 method bucket renames
+- `provider.sendTransaction()` → `provider.broadcastTransaction()`, 
+  parseTransaction/serializeTransaction → Transaction.from()
 - `provider.getGasPrice()` → `(await provider.getFeeData()).gasPrice` 
   with correct parenthesisation that recast handles automatically
-- Import cleanup — strips utils, BigNumber, providers from specifiers 
-  after the other transforms have run
+- Import cleanup — strips utils, BigNumber, providers, constants from 
+  specifiers after the other transforms have run
 
 The transforms are ordered. They run as a pipeline. Each one sees the 
 output of the previous. That matters for cases like 
@@ -30,13 +36,13 @@ atomically, not in two broken half-steps.
 Cloned the repo. Ran the codemod. Checked every line of the diff.
 
 - 31 files contained ethers imports
-- 15 migrated automatically  
+- 28 migrated automatically  
 - 3 flagged for manual review — BigNumber method chains on variables 
   we couldn't statically type-track
-- 153 lines changed (76 insertions, 77 deletions)
+- 502 lines changed (231 insertions, 271 deletions)
 - 0 incorrect changes
 
-Coverage: 83.3%. The 3 flagged files are genuine edge cases, not 
+Coverage: 90.3%. The 3 flagged files are genuine edge cases, not 
 failures — we'd rather add a TODO comment than silently corrupt code.
 
 We tried scaffold-eth-2 first. It was already on v6. That turned out 
@@ -64,7 +70,7 @@ than missed cases.
 
 ## Tests
 
-100 tests across 5 suites. Every transform has fixture-based tests with 
+154 tests across 8 suites. Every transform has fixture-based tests with 
 real input/output pairs. Run with `npm test`.
 
 ## How to run

@@ -93,10 +93,10 @@ I ran the pipeline against [Uniswap/v3-periphery](https://github.com/Uniswap/v3-
 | Metric | Result |
 |--------|--------|
 | Files scanned | 31 |
-| Files automatically migrated | 15 |
-| Lines changed | 153 (76 insertions, 77 deletions) |
+| Files automatically migrated | 28 |
+| Lines changed | 502 (231 insertions, 271 deletions) |
 | Files flagged for AI review | 3 |
-| Automated coverage | **83.3%** |
+| Automated coverage | **90.3%** |
 | False positives | **0** |
 
 I verified every change with `git diff` before counting. The 0 false positives claim I validated separately: running the same pipeline against scaffold-eth-2 (already on ethers v6) produced 0 changes and 0 TODOs.
@@ -149,7 +149,7 @@ Source and full documentation: **[https://github.com/Chinyereee/ethers-v5-to-v6-
 
 ## Conclusion
 
-15 files migrated automatically. 153 lines changed with zero false positives. 3 files handed off to AI with precise, targeted prompts. Total time to run: under 30 seconds.
+28 files migrated automatically. 502 lines changed with zero false positives. 3 files handed off to AI with precise, targeted prompts. Total time to run: under 30 seconds.
 
 This is what software maintenance should look like. Mechanical changes — the ones with one right answer — get automated at the AST level, fast and correct. Human judgment gets reserved for the semantic changes that actually need it: the data flow questions, the precision questions, the "what did the original author intend" questions that no static tool can answer reliably. The codemod tells you exactly which files those are and why. The AI handles them in minutes.
 

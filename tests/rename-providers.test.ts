@@ -25,9 +25,11 @@ describe('rename-providers – namespace NewExpression (all 7 renames)', () => {
       .toBe(normalize(ns('const p = new ethers.FallbackProvider([a, b]);')));
   });
 
-  it('StaticJsonRpcProvider → JsonRpcProvider (merged in v6)', () => {
-    expect(applyTransform(transform, ns("const p = new ethers.providers.StaticJsonRpcProvider('http://localhost');")))
-      .toBe(normalize(ns("const p = new ethers.JsonRpcProvider('http://localhost');")));
+  it('StaticJsonRpcProvider → JsonRpcProvider (merged in v6) with TODO comment', () => {
+    const result = applyTransform(transform, ns("const p = new ethers.providers.StaticJsonRpcProvider('http://localhost');"));
+    expect(result).toContain("new ethers.JsonRpcProvider('http://localhost')");
+    expect(result).toContain('TODO: ethers v6');
+    expect(result).toContain('staticNetwork');
   });
 
   it('AlchemyProvider → AlchemyProvider (same name)', () => {

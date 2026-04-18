@@ -92,6 +92,46 @@ describe('rename-utils – namespace (ethers.utils.X)', () => {
       .toBe(normalize(ns('const x = ethers.AbiCoder.defaultAbiCoder();')));
   });
 
+  it('joinSignature → Signature.from(x).serialized (renamed)', () => {
+    expect(applyTransform(transform, ns('const x = ethers.utils.joinSignature(splitSig);')))
+      .toBe(normalize(ns('const x = ethers.Signature.from(splitSig).serialized;')));
+  });
+
+  it('formatBytes32String → encodeBytes32String', () => {
+    expect(applyTransform(transform, ns("const x = ethers.utils.formatBytes32String('hello');")))
+      .toBe(normalize(ns("const x = ethers.encodeBytes32String('hello');")));
+  });
+
+  it('parseBytes32String → decodeBytes32String', () => {
+    expect(applyTransform(transform, ns('const x = ethers.utils.parseBytes32String(bytes32);')))
+      .toBe(normalize(ns('const x = ethers.decodeBytes32String(bytes32);')));
+  });
+
+  it('hexDataSlice → dataSlice', () => {
+    expect(applyTransform(transform, ns('const x = ethers.utils.hexDataSlice(data, 0, 4);')))
+      .toBe(normalize(ns('const x = ethers.dataSlice(data, 0, 4);')));
+  });
+
+  it('hexValue → toQuantity', () => {
+    expect(applyTransform(transform, ns('const x = ethers.utils.hexValue(value);')))
+      .toBe(normalize(ns('const x = ethers.toQuantity(value);')));
+  });
+
+  it('solidityPack → solidityPacked', () => {
+    expect(applyTransform(transform, ns("const x = ethers.utils.solidityPack(['uint256'], [1]);")))
+      .toBe(normalize(ns("const x = ethers.solidityPacked(['uint256'], [1]);")));
+  });
+
+  it('solidityKeccak256 → solidityPackedKeccak256', () => {
+    expect(applyTransform(transform, ns("const x = ethers.utils.solidityKeccak256(['uint256'], [1]);")))
+      .toBe(normalize(ns("const x = ethers.solidityPackedKeccak256(['uint256'], [1]);")));
+  });
+
+  it('soliditySha256 → solidityPackedSha256', () => {
+    expect(applyTransform(transform, ns("const x = ethers.utils.soliditySha256(['uint256'], [1]);")))
+      .toBe(normalize(ns("const x = ethers.solidityPackedSha256(['uint256'], [1]);")));
+  });
+
   it('does not transform non-ethers utils calls', () => {
     const input = ns('const x = foo.utils.parseEther(v);');
     expect(applyTransform(transform, input)).toBe(normalize(input));
@@ -113,6 +153,11 @@ describe('rename-utils – destructured (import { utils })', () => {
   it('replaces utils.splitSignature → ethers.Signature.from', () => {
     expect(applyTransform(transform, ds('const x = utils.splitSignature(sig);')))
       .toBe(normalize("import { ethers } from 'ethers';\nconst x = ethers.Signature.from(sig);"));
+  });
+
+  it('replaces utils.joinSignature → ethers.Signature.from(x).serialized', () => {
+    expect(applyTransform(transform, ds('const x = utils.joinSignature(splitSig);')))
+      .toBe(normalize("import { ethers } from 'ethers';\nconst x = ethers.Signature.from(splitSig).serialized;"));
   });
 
   it('replaces utils.defaultAbiCoder → ethers.AbiCoder.defaultAbiCoder()', () => {
