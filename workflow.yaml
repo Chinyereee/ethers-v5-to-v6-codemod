@@ -1,0 +1,9 @@
+version: "1"
+
+nodes:
+  - id: migrate
+    name: Run ethers v5 to v6 migration
+    type: automatic
+    steps:
+      - name: migrate
+        run: npx ts-node src/run.ts $PWD
