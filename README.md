@@ -82,7 +82,7 @@ Zero-false-positive claim validated separately by running against scaffold-eth-2
 
 ```bash
 # Option 1: via codemod registry
-npx codemod ethers/5-to-6 ./your-project
+npx codemod @chinyereee/ethers-v5-to-v6 ./your-project
 
 # Option 2: directly
 npx ts-node src/run.ts ./your-project
