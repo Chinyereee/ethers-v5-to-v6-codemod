@@ -1,4 +1,4 @@
-# I automated 83% of the ethers.js v5 → v6 migration using codemods and AI
+# I automated 90% of the ethers.js v5 → v6 migration using codemods and AI
 
 ethers v6 dropped a breaking change on every project that touched BigNumber, utils, or providers — which is basically every DeFi frontend ever written. The migration guide listed over 40 breaking changes. Some were simple renames. Some required understanding whether a variable was a BigNumber before deciding what to do with it. Doing this by hand across 31 files is exactly the kind of work that makes engineers quit. I built a codemod pipeline to handle the mechanical ones automatically — and wrote AI prompts for the rest.
 
@@ -26,7 +26,7 @@ The combination is the only approach that scales. Codemods alone leave the seman
 
 ---
 
-## The 5 transforms I built
+## The 8 transforms I built
 
 **rename-utils** — Lifts all 17 `ethers.utils.*` functions to the top-level namespace. Handles both `import * as ethers` and `import { utils }` styles, rewrites the import declaration, and covers the two structural changes.
 
@@ -74,7 +74,45 @@ const gasPrice = await provider.getGasPrice();
 const gasPrice = (await provider.getFeeData()).gasPrice;
 ```
 
-**update-imports** — Runs last. Removes deprecated specifiers (`utils`, `BigNumber`, `providers`) from `import { ... } from 'ethers'` declarations once the other transforms have finished introducing their replacements. If no specifiers remain, it removes the entire import statement.
+**rename-constants** — Replaces all `ethers.constants.*` accesses with their v6 equivalents. Named constants become top-level properties (`AddressZero → ZeroAddress`, `MaxUint256 → MaxUint256`). The four numeric constants become native bigint literals since BigNumber is gone.
+
+```ts
+// before
+const zero = ethers.constants.AddressZero;
+const max  = ethers.constants.MaxUint256;
+const one  = ethers.constants.One;
+
+// after
+const zero = ethers.ZeroAddress;
+const max  = ethers.MaxUint256;
+const one  = 1n;
+```
+
+**rename-contract-methods** — Rewrites the four v5 contract method bucket patterns. In v5, less-common operations were accessed via intermediate buckets (`callStatic`, `estimateGas`, `populateTransaction`, `functions`). In v6 they moved to direct methods on the contract function itself.
+
+```ts
+// before
+const result = await contract.callStatic.balanceOf(addr);
+const gas    = await contract.estimateGas.transfer(to, amount);
+
+// after
+const result = await contract.balanceOf.staticCall(addr);
+const gas    = await contract.transfer.estimateGas(to, amount);
+```
+
+**rename-provider-methods** — Handles three provider/transaction method changes. `sendTransaction` was renamed on the Provider side to `broadcastTransaction` (Signer's `sendTransaction` is unchanged — the transform adds a TODO so you can verify which one it is). `parseTransaction` and `serializeTransaction` became `Transaction.from()`.
+
+```ts
+// before
+await provider.sendTransaction(signedTx);
+const tx = ethers.utils.parseTransaction(bytes);
+
+// after (with TODO comment added for sendTransaction)
+await provider.broadcastTransaction(signedTx);
+const tx = ethers.Transaction.from(bytes);
+```
+
+**update-imports** — Runs last. Removes deprecated specifiers (`utils`, `BigNumber`, `providers`, `constants`) from `import { ... } from 'ethers'` declarations once the other transforms have finished introducing their replacements. If no specifiers remain, it removes the entire import statement.
 
 ```ts
 // before
@@ -141,7 +179,7 @@ Three files, one prompt each, done in under ten minutes.
 npx ts-node src/run.ts ./your-project
 ```
 
-The runner finds all `.ts`, `.tsx`, `.js`, `.jsx` files, skips anything with no ethers imports, runs all 5 transforms in the correct order, and prints a summary with per-transform change counts and a list of any files that need AI review.
+The runner finds all `.ts`, `.tsx`, `.js`, `.jsx` files, skips anything with no ethers imports, runs all 8 transforms in the correct order, and prints a summary with per-transform change counts and a list of any files that need AI review.
 
 Source and full documentation: **[https://github.com/Chinyereee/ethers-v5-to-v6-codemod](https://github.com/Chinyereee/ethers-v5-to-v6-codemod)**
 
