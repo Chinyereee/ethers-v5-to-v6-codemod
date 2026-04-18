@@ -79,4 +79,4 @@ npx ts-node src/run.ts ./your-project
 
 ## Links
 - GitHub: https://github.com/Chinyereee/ethers-v5-to-v6-codemod
-- Case study: (add Dev.to link after publishing)
+- Case study: https://dev.to/chinyereee/i-automated-90-of-the-ethersjs-v5-v6-migration-using-codemods-and-ai-22n6
