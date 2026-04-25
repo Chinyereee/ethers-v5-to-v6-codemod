@@ -25,6 +25,10 @@ export {
   updateImports,
 };
 
+// ── JSSG (ast-grep) transforms ────────────────────────────────────────────────
+
+export * as jssg from "../../scripts/index";
+
 // ── Pipeline ─────────────────────────────────────────────────────────────────
 
 /**
