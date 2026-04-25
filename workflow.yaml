@@ -1,25 +1,80 @@
-version: "1.0"
-steps:
-  - name: "Rename ethers.utils.* to top-level ethers.*"
-    run: npx codemod --engine jssg scripts/rename-utils.ts $CODEMOD_TARGET_DIR
+version: "1"
+nodes:
+  - id: rename-utils
+    name: "Rename ethers.utils.* to top-level ethers.*"
+    type: automatic
+    steps:
+      - name: "Rename ethers.utils.* to top-level ethers.*"
+        js-ast-grep:
+          js_file: scripts/rename-utils.ts
+          language: tsx
 
-  - name: "Replace BigNumber with native bigint"
-    run: npx codemod --engine jssg scripts/bigNumber-to-bigint.ts $CODEMOD_TARGET_DIR
+  - id: bigNumber-to-bigint
+    name: "Replace BigNumber with native bigint"
+    type: automatic
+    depends_on: [rename-utils]
+    steps:
+      - name: "Replace BigNumber with native bigint"
+        js-ast-grep:
+          js_file: scripts/bigNumber-to-bigint.ts
+          language: tsx
 
-  - name: "Rename ethers.providers.* to v6 provider names"
-    run: npx codemod --engine jssg scripts/rename-providers.ts $CODEMOD_TARGET_DIR
+  - id: rename-providers
+    name: "Rename ethers.providers.* to v6 provider names"
+    type: automatic
+    depends_on: [bigNumber-to-bigint]
+    steps:
+      - name: "Rename ethers.providers.* to v6 provider names"
+        js-ast-grep:
+          js_file: scripts/rename-providers.ts
+          language: tsx
 
-  - name: "Rename ethers.constants.* to v6 equivalents"
-    run: npx codemod --engine jssg scripts/rename-constants.ts $CODEMOD_TARGET_DIR
+  - id: rename-constants
+    name: "Rename ethers.constants.* to v6 equivalents"
+    type: automatic
+    depends_on: [rename-providers]
+    steps:
+      - name: "Rename ethers.constants.* to v6 equivalents"
+        js-ast-grep:
+          js_file: scripts/rename-constants.ts
+          language: tsx
 
-  - name: "Rename contract method buckets"
-    run: npx codemod --engine jssg scripts/rename-contract-methods.ts $CODEMOD_TARGET_DIR
+  - id: rename-contract-methods
+    name: "Rename contract method buckets"
+    type: automatic
+    depends_on: [rename-constants]
+    steps:
+      - name: "Rename contract method buckets"
+        js-ast-grep:
+          js_file: scripts/rename-contract-methods.ts
+          language: tsx
 
-  - name: "Rename provider methods"
-    run: npx codemod --engine jssg scripts/rename-provider-methods.ts $CODEMOD_TARGET_DIR
+  - id: rename-provider-methods
+    name: "Rename provider methods"
+    type: automatic
+    depends_on: [rename-contract-methods]
+    steps:
+      - name: "Rename provider methods"
+        js-ast-grep:
+          js_file: scripts/rename-provider-methods.ts
+          language: tsx
 
-  - name: "Replace getGasPrice with getFeeData"
-    run: npx codemod --engine jssg scripts/gasPrice-to-feeData.ts $CODEMOD_TARGET_DIR
+  - id: gasPrice-to-feeData
+    name: "Replace getGasPrice with getFeeData"
+    type: automatic
+    depends_on: [rename-provider-methods]
+    steps:
+      - name: "Replace getGasPrice with getFeeData"
+        js-ast-grep:
+          js_file: scripts/gasPrice-to-feeData.ts
+          language: tsx
 
-  - name: "Clean up deprecated import specifiers"
-    run: npx codemod --engine jssg scripts/update-imports.ts $CODEMOD_TARGET_DIR
+  - id: update-imports
+    name: "Clean up deprecated import specifiers"
+    type: automatic
+    depends_on: [gasPrice-to-feeData]
+    steps:
+      - name: "Clean up deprecated import specifiers"
+        js-ast-grep:
+          js_file: scripts/update-imports.ts
+          language: tsx
