@@ -1,9 +1,25 @@
-version: "1"
+version: "1.0"
+steps:
+  - name: "Rename ethers.utils.* to top-level ethers.*"
+    run: npx codemod --engine jssg scripts/rename-utils.ts $CODEMOD_TARGET_DIR
 
-nodes:
-  - id: migrate
-    name: Run ethers v5 to v6 migration
-    type: automatic
-    steps:
-      - name: migrate
-        run: npx ts-node src/run.ts $PWD
+  - name: "Replace BigNumber with native bigint"
+    run: npx codemod --engine jssg scripts/bigNumber-to-bigint.ts $CODEMOD_TARGET_DIR
+
+  - name: "Rename ethers.providers.* to v6 provider names"
+    run: npx codemod --engine jssg scripts/rename-providers.ts $CODEMOD_TARGET_DIR
+
+  - name: "Rename ethers.constants.* to v6 equivalents"
+    run: npx codemod --engine jssg scripts/rename-constants.ts $CODEMOD_TARGET_DIR
+
+  - name: "Rename contract method buckets"
+    run: npx codemod --engine jssg scripts/rename-contract-methods.ts $CODEMOD_TARGET_DIR
+
+  - name: "Rename provider methods"
+    run: npx codemod --engine jssg scripts/rename-provider-methods.ts $CODEMOD_TARGET_DIR
+
+  - name: "Replace getGasPrice with getFeeData"
+    run: npx codemod --engine jssg scripts/gasPrice-to-feeData.ts $CODEMOD_TARGET_DIR
+
+  - name: "Clean up deprecated import specifiers"
+    run: npx codemod --engine jssg scripts/update-imports.ts $CODEMOD_TARGET_DIR
