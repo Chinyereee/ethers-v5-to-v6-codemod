@@ -20,5 +20,5 @@ jobs:
 
       - name: Publish codemod
         env:
-          CODEMOD_API_KEY: ${{ secrets.CODEMOD_API_KEY }}
+          CODEMOD_AUTH_TOKEN: ${{ secrets.CODEMOD_AUTH_TOKEN }}
         run: npx codemod publish
