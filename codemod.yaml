@@ -1,6 +1,6 @@
 schema_version: "1.0"
 name: "@chinyereee/ethers-v5-to-v6"
-version: "1.0.0"
+version: "1.1.0"
 description: "Automates 90.3% of the ethers.js v5 to v6 migration. Handles BigNumber to bigint, utils namespace, provider renames, constants, contract method buckets, and more."
 author: "Chinyereee <chinyerejohnnna@gmail.com>"
 license: MIT

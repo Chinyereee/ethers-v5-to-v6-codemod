@@ -1,6 +1,6 @@
 {
   "name": "ethers-v5-to-v6",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Automates 90.3% of the ethers.js v5 to v6 migration",
   "main": "index.js",
   "scripts": {
@@ -8,11 +8,18 @@
     "transform": "jscodeshift",
     "build": "tsc"
   },
-  "keywords": ["ethereum", "ethers", "web3", "migration", "jscodeshift"],
+  "keywords": [
+    "ethereum",
+    "ethers",
+    "web3",
+    "migration",
+    "jscodeshift"
+  ],
   "author": "Chinyereee",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@codemod.com/jssg-types": "^1.6.0",
     "@types/jest": "^30.0.0",
     "@types/jscodeshift": "^17.3.0",
     "jest": "^30.3.0",
