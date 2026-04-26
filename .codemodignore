@@ -1,4 +1,15 @@
 node_modules/
 dist/
 coverage/
+.git/
+*.log
+.turbo/
+.next/
+out/
+build/
 tests/fixtures/
+*.test.ts
+jest.config.ts
+jest.config.js
+tsconfig.test.json
+package-lock.json
