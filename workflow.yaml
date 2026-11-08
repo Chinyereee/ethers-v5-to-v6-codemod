@@ -1,4 +1,19 @@
-version: "1"
+version: "1.0.0"
+steps:
+  - name: run-ast-grep-transforms
+    engine: jssg
+    # (Your existing transform settings live here)
+
+  # Add this new step right below your main engine run:
+  - name: resolve-ai-todos
+    engine: ai
+    prompt: |
+      You are an expert migration agent assisting with an ethers.js v5 to v6 upgrade. 
+      Review any code segments that contain the comment "// TODO: codemod flagged".
+      Refactor those lines inline to use native BigInt equivalents or valid async fee data getters.
+      Ensure type matching remains consistent without causing runtime TypeErrors.
+    model: gemini-2.5-flash
+
 nodes:
   - id: rename-utils
     name: "Rename ethers.utils.* to top-level ethers.*"
