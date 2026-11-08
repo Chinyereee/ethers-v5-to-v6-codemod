@@ -93,3 +93,16 @@ nodes:
         js-ast-grep:
           js_file: scripts/update-imports.ts
           language: tsx
+  - id: resolve-ai-edgecases
+    name: "Resolve ambiguous edge cases with AI"
+    type: automatic
+    depends_on: [update-imports]
+    steps:
+      - name: "AI fixups for BigNumber and gas price edge cases"
+        ai:
+          prompt: |
+            The previous steps migrated the codebase from ethers.js v5 to v6 but left edge-case sections flagged with "// TODO: codemod flagged".
+            Scan the codebase for these specific comments and safely fix them:
+            1. Convert .toNumber() -> Number(value) or .toHexString() -> value.toString(16).
+            2. Make sure any unawaited provider.getGasPrice() calls are rewritten to use async/await with provider.getFeeData().
+            Return ONLY the fully corrected source code file without any extra markdown chat wrappers.
