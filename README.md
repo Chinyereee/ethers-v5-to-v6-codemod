@@ -99,7 +99,10 @@ The runner will:
 
 ## AI-Assisted Edge Cases
 
-For the patterns the codemod flags with `TODO` comments, paste the relevant file content into Claude or ChatGPT along with one of these prompts.
+## AI-Assisted Edge Cases
+
+For the patterns the codemod flags with `TODO` comments, paste the relevant file content into `Claude` or ChatGPT along with one of these prompts.
+
 
 ### 1. BigNumber method chains on untracked variables
 
