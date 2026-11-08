@@ -93,12 +93,4 @@ nodes:
         js-ast-grep:
           js_file: scripts/update-imports.ts
           language: tsx
-    - id: resolve-ai-edgecases
-    name: "Resolve ambiguous edge cases with AI"
-    type: automatic
-    depends_on: [update-imports]
-    steps:
-      - name: "AI fixups for BigNumber and gas price edge cases"
-        js-ast-grep:
-          js_file: scripts/resolve-ai-edgecases.ts
-          language: tsx
+   
