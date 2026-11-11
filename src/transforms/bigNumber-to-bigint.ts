@@ -32,6 +32,7 @@ export default function transform(file: FileInfo, api: API): string {
   // ── Detect import style ────────────────────────────────────────────────────
   let hasBigNumberImport = false; // import { BigNumber } from 'ethers'
   let hasEthersNamespace = false; // import * as ethers / import ethers from 'ethers'
+  let ethersNamespaceIsNamedEthers = false; // the namespace/default local name is `ethers`
 
   const ethersImports = root.find(j.ImportDeclaration, (node: ImportDeclaration) =>
     node.source.value === 'ethers'
@@ -44,6 +45,7 @@ export default function transform(file: FileInfo, api: API): string {
         spec.type === 'ImportDefaultSpecifier'
       ) {
         hasEthersNamespace = true;
+        if (spec.local?.name === 'ethers') ethersNamespaceIsNamedEthers = true;
       } else if (
         spec.type === 'ImportSpecifier' &&
         spec.imported.type === 'Identifier' &&
@@ -196,7 +198,22 @@ export default function transform(file: FileInfo, api: API): string {
       }
     });
 
-  // .toHexString() → .toString(16)
+  // .toHexString() → toBeHex(x)
+  // v5 returns an even-length 0x-prefixed string ("0xff", "0x01"); v6 toBeHex()
+  // matches it exactly, while bigint#toString(16) drops the prefix and padding.
+  let needsToBeHexImport = false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function toBeHexCall(arg: any): CallExpression {
+    if (ethersNamespaceIsNamedEthers) {
+      return j.callExpression(
+        j.memberExpression(j.identifier('ethers'), j.identifier('toBeHex')),
+        [arg]
+      );
+    }
+    needsToBeHexImport = true;
+    return j.callExpression(j.identifier('toBeHex'), [arg]);
+  }
+
   root
     .find(j.CallExpression, (node: CallExpression): boolean =>
       node.callee.type === 'MemberExpression' &&
@@ -207,12 +224,7 @@ export default function transform(file: FileInfo, api: API): string {
     .forEach((path: ASTPath<CallExpression>) => {
       const obj = ((path.node.callee as MemberExpression).object) as Expression;
       if (isKnownBigNumber(obj)) {
-        path.replace(
-          j.callExpression(
-            j.memberExpression(resolveReceiver(obj), j.identifier('toString')),
-            [j.numericLiteral(16)]
-          )
-        );
+        path.replace(toBeHexCall(resolveReceiver(obj)));
       } else {
         addTodoComment(path);
       }
@@ -287,7 +299,9 @@ export default function transform(file: FileInfo, api: API): string {
   }
 
   // ── Step 3 — Remove BigNumber from import specifiers ──────────────────────
+  // (and add `toBeHex` to the first named ethers import if Step 1 used it)
   if (hasBigNumberImport) {
+    let toBeHexAdded = false;
     ethersImports.forEach((path) => {
       const specifiers = path.node.specifiers ?? [];
       const filtered = specifiers.filter(
@@ -298,6 +312,17 @@ export default function transform(file: FileInfo, api: API): string {
             (s.imported as { name: string }).name === 'BigNumber'
           )
       );
+      const isNamedImport = specifiers.some((s) => s.type === 'ImportSpecifier');
+      const alreadyHasToBeHex = filtered.some(
+        (s) =>
+          s.type === 'ImportSpecifier' &&
+          s.imported.type === 'Identifier' &&
+          (s.imported as { name: string }).name === 'toBeHex'
+      );
+      if (needsToBeHexImport && !toBeHexAdded && isNamedImport) {
+        if (!alreadyHasToBeHex) filtered.push(j.importSpecifier(j.identifier('toBeHex')));
+        toBeHexAdded = true;
+      }
       if (filtered.length === 0) {
         j(path).remove();
       } else {

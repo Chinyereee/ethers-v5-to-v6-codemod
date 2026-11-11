@@ -163,7 +163,7 @@ BigNumber. Please help me migrate it:
 
 Key rules:
 - .toNumber() → Number(value) if the bigint fits safely in a JS number
-- .toHexString() → value.toString(16)
+- .toHexString() → ethers.toBeHex(value)  (keeps the 0x prefix and even-length padding; value.toString(16) does not)
 - .add(x) → value + x  (both sides must be bigint — check that x is also bigint)
 - Values returned from contract calls are already bigint in ethers v6, no conversion needed
 - If a value could exceed Number.MAX_SAFE_INTEGER, keep it as bigint

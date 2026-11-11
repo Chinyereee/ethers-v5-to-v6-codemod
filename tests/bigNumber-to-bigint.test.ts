@@ -36,7 +36,7 @@ describe('bigNumber-to-bigint – BigNumber.from (named import)', () => {
 
   it('converts chained .toHexString() on direct BigNumber.from call', () => {
     expect(applyTransform(transform, named("const h = BigNumber.from('255').toHexString();")))
-      .toBe(normalize("const h = BigInt('255').toString(16);"));
+      .toBe(normalize("import { toBeHex } from 'ethers';\nconst h = toBeHex(BigInt('255'));"));
   });
 
   it('converts .toNumber() on tracked variable', () => {
@@ -47,8 +47,43 @@ describe('bigNumber-to-bigint – BigNumber.from (named import)', () => {
 
   it('converts .toHexString() on tracked variable', () => {
     const input = named("const bn = BigNumber.from('255');\nconst h = bn.toHexString();");
-    const expected = "const bn = BigInt('255');\nconst h = bn.toString(16);";
+    const expected = "import { toBeHex } from 'ethers';\nconst bn = BigInt('255');\nconst h = toBeHex(bn);";
     expect(applyTransform(transform, input)).toBe(normalize(expected));
+  });
+});
+
+describe('bigNumber-to-bigint – toHexString keeps the 0x prefix', () => {
+  // v5 BigNumber#toHexString() returns an even-length, 0x-prefixed string
+  // ("0xff", "0x01"). v6 toBeHex() returns the same; bigint#toString(16) does not.
+  it('uses ethers.toBeHex with a namespace import', () => {
+    const input = ns("const bn = ethers.BigNumber.from('255');\nconst h = bn.toHexString();");
+    const expected = ns("const bn = BigInt('255');\nconst h = ethers.toBeHex(bn);");
+    expect(applyTransform(transform, input)).toBe(normalize(expected));
+  });
+
+  it('keeps other named imports and adds toBeHex', () => {
+    const input = "import { BigNumber, Contract } from 'ethers';\nconst h = BigNumber.from(1).toHexString();";
+    const expected = "import { Contract, toBeHex } from 'ethers';\nconst h = toBeHex(BigInt(1));";
+    expect(applyTransform(transform, input)).toBe(normalize(expected));
+  });
+
+  it('does not add a duplicate toBeHex import', () => {
+    const input = "import { BigNumber, toBeHex } from 'ethers';\nconst h = BigNumber.from(1).toHexString();";
+    const expected = "import { toBeHex } from 'ethers';\nconst h = toBeHex(BigInt(1));";
+    expect(applyTransform(transform, input)).toBe(normalize(expected));
+  });
+
+  it('produces output that matches v5 at runtime', () => {
+    // What ethers v6 toBeHex(x) returns for these inputs, per its implementation:
+    // minimal hex, left-padded to an even number of digits, 0x-prefixed.
+    const toBeHex = (v: bigint) => {
+      let h = v.toString(16);
+      if (h.length % 2) h = '0' + h;
+      return '0x' + h;
+    };
+    expect(toBeHex(255n)).toBe('0xff');
+    expect(toBeHex(1n)).toBe('0x01');
+    expect(toBeHex(256n)).toBe('0x0100');
   });
 });
 

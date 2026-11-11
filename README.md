@@ -33,7 +33,7 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | BigNumber — construction | `BigNumber.from(x)` | `BigInt(x)` | ✅ Automated |
 | BigNumber — construction namespace | `ethers.BigNumber.from(x)` | `BigInt(x)` | ✅ Automated |
 | BigNumber — toNumber() on tracked var | `bn.toNumber()` | `Number(bn)` | ✅ Automated |
-| BigNumber — toHexString() on tracked var | `bn.toHexString()` | `bn.toString(16)` | ✅ Automated |
+| BigNumber — toHexString() on tracked var | `bn.toHexString()` | `toBeHex(bn)` (keeps the `0x` prefix) | ✅ Automated |
 | BigNumber — arithmetic on tracked var | `bn.add(x)` / `bn.sub(x)` / `bn.mul(x)` / `bn.div(x)` | `bn + x` / `bn - x` / `bn * x` / `bn / x` | ✅ Automated |
 | BigNumber — comparisons on tracked var | `bn.gt(x)` / `bn.gte(x)` / `bn.lt(x)` / `bn.lte(x)` / `bn.eq(x)` | `bn > x` / `bn >= x` / `bn < x` / `bn <= x` / `bn === x` | ✅ Automated |
 | BigNumber — remove import specifier | `import { BigNumber } from 'ethers'` | _(removed)_ | ✅ Automated |
@@ -118,7 +118,7 @@ BigNumber. Please help me migrate it:
 
 For context:
 - .toNumber() → Number(value) if the bigint fits safely, otherwise use parseInt or a manual check
-- .toHexString() → value.toString(16)
+- .toHexString() → ethers.toBeHex(value)  (keeps the 0x prefix and even-length padding; value.toString(16) does not)
 - .add(x) → value + x  (both sides must be bigint — check that x is also bigint)
 - .mul(x) → value * x
 - BigNumber.from(x) → BigInt(x)  where x can be string, number, or hex
