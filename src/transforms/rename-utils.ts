@@ -199,6 +199,34 @@ export default function transform(file: FileInfo, api: API): string {
   if (hasUtilsDestructured) {
     let didTransform = false;
 
+    // If `ethers` is already declared by something else (e.g. hardhat's
+    // `import { ethers } from 'hardhat'`), adding `import { ethers } from
+    // 'ethers'` would declare it twice. Import the flattened names instead.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const declaresEthers = (id: any): boolean =>
+      (id?.type === 'Identifier' && id.name === 'ethers') ||
+      (id?.type === 'ObjectPattern' &&
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        id.properties.some((p: any) => declaresEthers(p.value ?? p.argument)));
+    const ethersBoundElsewhere =
+      root
+        .find(j.ImportDeclaration, (n: ImportDeclaration) => n.source.value !== 'ethers')
+        .filter((p) => (p.node.specifiers ?? []).some((s) => s.local?.name === 'ethers'))
+        .size() > 0 ||
+      root.find(j.VariableDeclarator).filter((p) => declaresEthers(p.node.id)).size() > 0;
+    const bare = !hasEthersNamespace && !hasEthersSpecifier && ethersBoundElsewhere;
+    const bareNames = new Set<string>();
+    const access = (name: string) => {
+      if (!bare) return ethersAccess(name);
+      bareNames.add(name);
+      return j.identifier(name);
+    };
+    const nsCall = (ns: string, method: string, args: CallExpression['arguments']) => {
+      if (!bare) return ethersNamespacedCall(ns, method, args);
+      bareNames.add(ns);
+      return j.callExpression(j.memberExpression(j.identifier(ns), j.identifier(method)), args);
+    };
+
     // utils.defaultAbiCoder -> ethers.AbiCoder.defaultAbiCoder()
     root
       .find(j.MemberExpression, (node: MemberExpression) => {
@@ -211,13 +239,7 @@ export default function transform(file: FileInfo, api: API): string {
       })
       .replaceWith(() => {
         didTransform = true;
-        return j.callExpression(
-          j.memberExpression(
-            j.memberExpression(j.identifier('ethers'), j.identifier('AbiCoder')),
-            j.identifier('defaultAbiCoder')
-          ),
-          []
-        );
+        return nsCall('AbiCoder', 'defaultAbiCoder', []);
       });
 
     // utils.splitSignature(x) -> ethers.Signature.from(x)
@@ -234,7 +256,7 @@ export default function transform(file: FileInfo, api: API): string {
       })
       .replaceWith((path: ASTPath<CallExpression>) => {
         didTransform = true;
-        return ethersNamespacedCall('Signature', 'from', path.node.arguments);
+        return nsCall('Signature', 'from', path.node.arguments);
       });
 
     // utils.joinSignature(x) -> ethers.Signature.from(x).serialized
@@ -252,7 +274,7 @@ export default function transform(file: FileInfo, api: API): string {
       .replaceWith((path: ASTPath<CallExpression>) => {
         didTransform = true;
         return j.memberExpression(
-          ethersNamespacedCall('Signature', 'from', path.node.arguments),
+          nsCall('Signature', 'from', path.node.arguments),
           j.identifier('serialized')
         );
       });
@@ -274,7 +296,7 @@ export default function transform(file: FileInfo, api: API): string {
         const callee = path.node.callee as MemberExpression;
         const methodName = (callee.property as { name: string }).name;
         const v6Name = UTILS_TO_ETHERS[methodName];
-        return j.callExpression(ethersAccess(v6Name), path.node.arguments);
+        return j.callExpression(access(v6Name), path.node.arguments);
       });
 
     if (didTransform) {
@@ -301,7 +323,16 @@ export default function transform(file: FileInfo, api: API): string {
               (s.imported as { name: string }).name === 'ethers'
           );
 
-        if (!alreadyHasEthers) {
+        if (bare) {
+          const have = new Set(
+            filtered
+              .filter((s) => s.type === 'ImportSpecifier')
+              .map((s) => (s as { imported: { name: string } }).imported.name)
+          );
+          for (const name of [...bareNames].sort()) {
+            if (!have.has(name)) filtered.push(j.importSpecifier(j.identifier(name)));
+          }
+        } else if (!alreadyHasEthers) {
           filtered.unshift(j.importSpecifier(j.identifier('ethers')));
         }
 

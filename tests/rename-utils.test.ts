@@ -191,3 +191,41 @@ describe('rename-utils – fixture: all 17 namespace patterns', () => {
     expect(applyTransform(transform, input)).toBe(expected);
   });
 });
+
+describe('rename-utils – `ethers` already bound by another import (hardhat)', () => {
+  // Adding `import { ethers } from 'ethers'` next to `import { ethers } from 'hardhat'`
+  // declared `ethers` twice: the file stopped parsing and every later transform
+  // failed on it (Aave v3 core: pool-edge.spec.ts, pool-l2.spec.ts).
+  it('imports the flattened names directly instead of adding a second `ethers`', () => {
+    const input = [
+      "import { BigNumber, utils } from 'ethers';",
+      "import { ethers } from 'hardhat';",
+      "const v = utils.parseUnits('1', 18);",
+      'const s = utils.splitSignature(sig);',
+    ].join('\n');
+    expect(applyTransform(transform, input)).toBe(
+      normalize(
+        [
+          "import { BigNumber, Signature, parseUnits } from 'ethers';",
+          "import { ethers } from 'hardhat';",
+          "const v = parseUnits('1', 18);",
+          'const s = Signature.from(sig);',
+        ].join('\n')
+      )
+    );
+  });
+
+  it('same when ethers comes from a destructured require', () => {
+    const input = "import { utils } from 'ethers';\nconst { ethers } = require('hardhat');\nconst h = utils.keccak256(x);";
+    expect(applyTransform(transform, input)).toBe(
+      normalize("import { keccak256 } from 'ethers';\nconst { ethers } = require('hardhat');\nconst h = keccak256(x);")
+    );
+  });
+
+  it('defaultAbiCoder → AbiCoder.defaultAbiCoder() with AbiCoder imported', () => {
+    const input = "import { utils } from 'ethers';\nimport { ethers } from 'hardhat';\nconst e = utils.defaultAbiCoder.encode(t, v);";
+    expect(applyTransform(transform, input)).toBe(
+      normalize("import { AbiCoder } from 'ethers';\nimport { ethers } from 'hardhat';\nconst e = AbiCoder.defaultAbiCoder().encode(t, v);")
+    );
+  });
+});
