@@ -150,6 +150,33 @@ export default function transform(file: FileInfo, api: API): string {
   }
 
   /**
+   * Make the right-hand operand of a migrated operator a bigint.
+   * v5 methods accepted any BigNumberish; native operators throw on
+   * bigint/number mixes (`a * 2`), compare false across types (`a === 1000`)
+   * and concatenate strings (`a + '5'`).
+   *  - integer literals become bigint literals: 2 → 2n, 0x10 → 0x10n
+   *  - known bigints (tracked vars, BigNumber.from, BigInt(), 5n) are kept
+   *  - anything else is wrapped: fee → BigInt(fee), '5' → BigInt('5')
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function toBigIntOperand(node: any): any {
+    if (node.type === 'BigIntLiteral') return node;
+    if (isKnownBigNumber(node as Expression)) return node;
+    if (
+      node.type === 'CallExpression' &&
+      node.callee.type === 'Identifier' &&
+      node.callee.name === 'BigInt'
+    ) return node;
+    if (node.type === 'NumericLiteral') {
+      const raw: string = node.extra?.raw ?? String(node.value);
+      if (/^(0[xX][0-9a-fA-F]+|0[oO][0-7]+|0[bB][01]+|[0-9]+)$/.test(raw.replace(/_/g, ''))) {
+        return j.bigIntLiteral(raw);
+      }
+    }
+    return j.callExpression(j.identifier('BigInt'), [node]);
+  }
+
+  /**
    * Walk up the path chain to find the nearest Statement node and prepend a
    * TODO line comment.  Idempotent — won't add twice.
    */
@@ -250,7 +277,7 @@ export default function transform(file: FileInfo, api: API): string {
         // are structurally incompatible in newer @types/jscodeshift (TSInstantiationExpression
         // is in ExpressionKind but not in jscodeshift's re-export of Expression).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const right = path.node.arguments[0] as any;
+        const right = toBigIntOperand(path.node.arguments[0] as any);
         // recast's printer will add parentheses as needed based on parent precedence
         path.replace(j.binaryExpression(operator as Parameters<typeof j.binaryExpression>[0], left, right));
       });

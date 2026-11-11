@@ -136,6 +136,55 @@ describe('bigNumber-to-bigint – arithmetic operators on tracked variables', ()
   });
 });
 
+describe('bigNumber-to-bigint – operands are always bigint', () => {
+  // v5 methods accepted any BigNumberish (number, string, BigNumber). Native
+  // operators don't: bigint * number throws a TypeError, bigint === number is
+  // always false, and bigint + string concatenates.
+  const setup = (expr: string) => named(`const a = BigNumber.from('10');\nconst r = ${expr};`);
+  const expected = (expr: string) => normalize(`const a = BigInt('10');\nconst r = ${expr};`);
+
+  it('.mul(2) → a * 2n (not a * 2, which throws)', () => {
+    expect(applyTransform(transform, setup('a.mul(2)'))).toBe(expected('a * 2n'));
+  });
+
+  it('.eq(1000) → a === 1000n (not a === 1000, which is always false)', () => {
+    expect(applyTransform(transform, setup('a.eq(1000)'))).toBe(expected('a === 1000n'));
+  });
+
+  it('keeps hex literals readable: .add(0x10) → a + 0x10n', () => {
+    expect(applyTransform(transform, setup('a.add(0x10)'))).toBe(expected('a + 0x10n'));
+  });
+
+  it(".add('5') → a + BigInt('5') (not string concatenation)", () => {
+    expect(applyTransform(transform, setup("a.add('5')"))).toBe(expected("a + BigInt('5')"));
+  });
+
+  it('wraps an untracked operand: .sub(fee) → a - BigInt(fee)', () => {
+    expect(applyTransform(transform, setup('a.sub(fee)'))).toBe(expected('a - BigInt(fee)'));
+  });
+
+  it('wraps a non-safe numeric literal: .mul(1e18) → a * BigInt(1e18)', () => {
+    expect(applyTransform(transform, setup('a.mul(1e18)'))).toBe(expected('a * BigInt(1e18)'));
+  });
+
+  it('leaves bigint operands alone: .add(5n) and .add(BigInt(x))', () => {
+    expect(applyTransform(transform, setup('a.add(5n)'))).toBe(expected('a + 5n'));
+    expect(applyTransform(transform, setup('a.add(BigInt(x))'))).toBe(expected('a + BigInt(x)'));
+  });
+
+  it('leaves a BigNumber.from operand to become BigInt(...)', () => {
+    expect(applyTransform(transform, setup('a.add(BigNumber.from(1))'))).toBe(expected('a + BigInt(1)'));
+  });
+
+  it('produces code that evaluates like v5', () => {
+    const a = BigInt('10');
+    expect(a * 2n).toBe(20n);
+    expect(a === 10n).toBe(true);
+    expect(a + BigInt('5')).toBe(15n);
+    expect(() => (a as unknown as number) * 2).toThrow(TypeError);
+  });
+});
+
 describe('bigNumber-to-bigint – TODO comments for untracked receivers', () => {
   it('adds TODO comment above .toNumber() on untracked variable', () => {
     const input = named('const n = unknownBigNumber.toNumber();');

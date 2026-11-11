@@ -34,8 +34,8 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | BigNumber — construction namespace | `ethers.BigNumber.from(x)` | `BigInt(x)` | ✅ Automated |
 | BigNumber — toNumber() on tracked var | `bn.toNumber()` | `Number(bn)` | ✅ Automated |
 | BigNumber — toHexString() on tracked var | `bn.toHexString()` | `toBeHex(bn)` (keeps the `0x` prefix) | ✅ Automated |
-| BigNumber — arithmetic on tracked var | `bn.add(x)` / `bn.sub(x)` / `bn.mul(x)` / `bn.div(x)` | `bn + x` / `bn - x` / `bn * x` / `bn / x` | ✅ Automated |
-| BigNumber — comparisons on tracked var | `bn.gt(x)` / `bn.gte(x)` / `bn.lt(x)` / `bn.lte(x)` / `bn.eq(x)` | `bn > x` / `bn >= x` / `bn < x` / `bn <= x` / `bn === x` | ✅ Automated |
+| BigNumber — arithmetic on tracked var | `bn.add(x)` / `bn.sub(x)` / `bn.mul(x)` / `bn.div(x)` | `bn + x` / `bn - x` / `bn * x` / `bn / x` (operands made bigint: `2` → `2n`, `fee` → `BigInt(fee)`) | ✅ Automated |
+| BigNumber — comparisons on tracked var | `bn.gt(x)` / `bn.gte(x)` / `bn.lt(x)` / `bn.lte(x)` / `bn.eq(x)` | `bn > x` / `bn >= x` / `bn < x` / `bn <= x` / `bn === x` (same operand rule) | ✅ Automated |
 | BigNumber — remove import specifier | `import { BigNumber } from 'ethers'` | _(removed)_ | ✅ Automated |
 | BigNumber — toNumber() untracked | `contractReturn.toNumber()` | _(flagged)_ | ⚠️ AI-assisted |
 | BigNumber — toHexString() untracked | `contractReturn.toHexString()` | _(flagged)_ | ⚠️ AI-assisted |
