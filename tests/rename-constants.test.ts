@@ -67,14 +67,28 @@ describe('rename-constants – namespace (ethers.constants.X)', () => {
 });
 
 describe('rename-constants – destructured (import { constants })', () => {
-  it('AddressZero → ethers.ZeroAddress, updates import', () => {
+  // The named import binds ZeroAddress, not `ethers`, so the usage must be the
+  // bare name. (ethers.ZeroAddress here would be a ReferenceError at runtime.)
+  it('AddressZero → ZeroAddress, updates import', () => {
     expect(applyTransform(transform, ds('const x = constants.AddressZero;')))
-      .toBe(normalize("import { ZeroAddress } from 'ethers';\nconst x = ethers.ZeroAddress;"));
+      .toBe(normalize("import { ZeroAddress } from 'ethers';\nconst x = ZeroAddress;"));
   });
 
-  it('HashZero → ethers.ZeroHash, updates import', () => {
+  it('HashZero → ZeroHash, updates import', () => {
     expect(applyTransform(transform, ds('const x = constants.HashZero;')))
-      .toBe(normalize("import { ZeroHash } from 'ethers';\nconst x = ethers.ZeroHash;"));
+      .toBe(normalize("import { ZeroHash } from 'ethers';\nconst x = ZeroHash;"));
+  });
+
+  it('never references `ethers` when the file has no ethers binding (Uniswap permit.ts)', () => {
+    const input =
+      "import { BigNumberish, constants, Wallet } from 'ethers';\n" +
+      'export function f(value: BigNumberish = constants.MaxUint256, deadline = constants.MaxUint256) {}';
+    expect(applyTransform(transform, input)).toBe(
+      normalize(
+        "import { BigNumberish, Wallet, MaxUint256 } from 'ethers';\n" +
+          'export function f(value: BigNumberish = MaxUint256, deadline = MaxUint256) {}'
+      )
+    );
   });
 
   it('Zero → 0n, removes import when nothing else imported', () => {

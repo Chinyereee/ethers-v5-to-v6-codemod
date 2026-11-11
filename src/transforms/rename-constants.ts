@@ -112,7 +112,8 @@ export default function transform(file: FileInfo, api: API): string {
     let didTransform = false;
     const usedV6Names = new Set<string>();
 
-    // Simple renames: constants.X → ethers.Y
+    // Simple renames: constants.X → Y, with Y added to the named import below.
+    // (Not ethers.Y: a named import doesn't bind `ethers`.)
     for (const [v5Name, v6Name] of Object.entries(CONSTANTS_TO_ETHERS)) {
       root
         .find(j.MemberExpression, (node: MemberExpression) =>
@@ -121,7 +122,7 @@ export default function transform(file: FileInfo, api: API): string {
         .replaceWith(() => {
           didTransform = true;
           usedV6Names.add(v6Name);
-          return j.memberExpression(j.identifier('ethers'), j.identifier(v6Name));
+          return j.identifier(v6Name);
         });
     }
 
