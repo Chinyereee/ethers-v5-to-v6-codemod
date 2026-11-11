@@ -193,11 +193,10 @@ describe('bigNumber-to-bigint – TODO comments for untracked receivers', () => 
     expect(result).toContain('unknownBigNumber.toNumber()');
   });
 
-  it('adds TODO comment for chained .toNumber() on arithmetic result', () => {
+  it('converts chained .toNumber() on an arithmetic result (chains are now followed)', () => {
     const input = named("const r = BigNumber.from('100').add(someValue).toNumber();");
-    const result = applyTransform(transform, input);
-    expect(result).toContain('TODO(ethers-codemod)');
-    expect(result).toContain('.toNumber()');
+    expect(applyTransform(transform, input))
+      .toBe(normalize("const r = Number(BigInt('100') + BigInt(someValue));"));
   });
 
   it('adds TODO comment above .toHexString() on untracked variable', () => {
@@ -247,5 +246,67 @@ describe('bigNumber-to-bigint – fixture: all patterns', () => {
     const input = readFixture('bigNumber-to-bigint', 'input.ts');
     const expected = readFixture('bigNumber-to-bigint', 'output.ts');
     expect(applyTransform(transform, input)).toBe(expected);
+  });
+});
+
+describe('bigNumber-to-bigint – more methods, and chains on converted results', () => {
+  // Found by running the codemod on Uniswap v3-periphery: e.g.
+  // BigNumber.from(2).pow(128).sub(1) became BigInt(2).pow(128).sub(1),
+  // which throws "BigInt(...).pow is not a function".
+  const out = (body: string) => applyTransform(transform, named(body));
+
+  it('pow + chained sub: BigNumber.from(2).pow(128).sub(1) → BigInt(2) ** 128n - 1n', () => {
+    expect(out('export const MaxUint128 = BigNumber.from(2).pow(128).sub(1);'))
+      .toBe(normalize('export const MaxUint128 = BigInt(2) ** 128n - 1n;'));
+  });
+
+  it('nested from() as operand: from(n).mul(from(10).pow(18)) → BigInt(n) * BigInt(10) ** 18n', () => {
+    expect(out('const x = BigNumber.from(n).mul(BigNumber.from(10).pow(18));'))
+      .toBe(normalize('const x = BigInt(n) * BigInt(10) ** 18n;'));
+  });
+
+  it('shl / shr on a tracked variable', () => {
+    expect(out('const a = BigNumber.from(1);\nconst l = a.shl(70);\nconst r = a.shr(1);'))
+      .toBe(normalize('const a = BigInt(1);\nconst l = a << 70n;\nconst r = a >> 1n;'));
+  });
+
+  it('comparison on an arithmetic result: a.add(1).gt(b) → a + 1n > b', () => {
+    expect(out("const a = BigNumber.from('1');\nconst b = BigNumber.from('2');\nconst r = a.add(1).gt(b);"))
+      .toBe(normalize("const a = BigInt('1');\nconst b = BigInt('2');\nconst r = a + 1n > b;"));
+  });
+
+  it('keeps grouping: a.sub(b).mul(2) → (a - b) * 2n', () => {
+    expect(out("const a = BigNumber.from('5');\nconst b = BigNumber.from('3');\nconst r = a.sub(b).mul(2);"))
+      .toBe(normalize("const a = BigInt('5');\nconst b = BigInt('3');\nconst r = (a - b) * 2n;"));
+  });
+
+  it('tracks a variable assigned from a chain', () => {
+    expect(out('const m = BigNumber.from(2).pow(8);\nconst n = m.toNumber();'))
+      .toBe(normalize('const m = BigInt(2) ** 8n;\nconst n = Number(m);'));
+  });
+
+  it('isZero() → === 0n, isNegative() → < 0n', () => {
+    expect(out('const a = BigNumber.from(x);\nconst z = a.isZero();\nconst n = a.isNegative();'))
+      .toBe(normalize('const a = BigInt(x);\nconst z = a === 0n;\nconst n = a < 0n;'));
+  });
+
+  it('abs() on a variable → (a < 0n ? -a : a)', () => {
+    expect(out('const a = BigNumber.from(x);\nconst p = a.abs();'))
+      .toBe(normalize('const a = BigInt(x);\nconst p = a < 0n ? -a : a;'));
+  });
+
+  it('mod → % with a TODO, because v5 mod never returned a negative and % can', () => {
+    const result = out('const a = BigNumber.from(x);\nconst r = a.mod(3);');
+    expect(result).toContain('const r = a % 3n;');
+    expect(result).toContain('TODO(ethers-codemod)');
+    expect(result).toContain('% keeps the sign');
+  });
+
+  it('generated expressions give the same values ethers v5 gave', () => {
+    // Values measured with ethers@5.8.0 BigNumber.
+    expect((BigInt(2) ** 128n - 1n).toString()).toBe('340282366920938463463374607431768211455');
+    expect((1n << 70n).toString()).toBe('1180591620717411303424');
+    expect((-7n / 2n).toString()).toBe('-3'); // v5 div(-7, 2) = -3
+    expect(BigInt(5) * BigInt(10) ** 18n).toBe(5000000000000000000n);
   });
 });

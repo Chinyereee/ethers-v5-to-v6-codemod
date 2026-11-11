@@ -9,21 +9,31 @@ import type {
 } from 'jscodeshift';
 import { bindsEthersNamespace } from './ethers-import';
 
-// BigNumber instance methods that become binary operators
-const BN_BINARY_OPS: Record<string, string> = {
+// BigNumber instance methods that become binary operators.
+// pow/shl/shr/div match native bigint exactly (checked against ethers@5.8.0).
+// mod does not for a negative left side: v5 mod(-7, 3) is 2, -7n % 3n is -1.
+const BN_ARITHMETIC_OPS: Record<string, string> = {
   add: '+',
   sub: '-',
   mul: '*',
   div: '/',
+  mod: '%',
+  pow: '**',
+  shl: '<<',
+  shr: '>>',
+};
+const BN_COMPARISON_OPS: Record<string, string> = {
   eq: '===',
   gt: '>',
   gte: '>=',
   lt: '<',
   lte: '<=',
 };
+const BN_BINARY_OPS: Record<string, string> = { ...BN_ARITHMETIC_OPS, ...BN_COMPARISON_OPS };
+const BIGINT_BINARY_OPERATORS = new Set(Object.values(BN_ARITHMETIC_OPS));
+// Zero-argument methods we rewrite on a known BigNumber
+const BN_UNARY_METHODS = new Set(['toNumber', 'toHexString', 'isZero', 'isNegative', 'abs']);
 
-// Methods that are BigNumber-specific enough to warrant a TODO comment when
-// we see them on an untracked receiver (not worth doing for add/sub/etc.)
 const BN_SPECIFIC_METHODS = new Set(['toNumber', 'toHexString']);
 
 export default function transform(file: FileInfo, api: API): string {
@@ -99,41 +109,56 @@ export default function transform(file: FileInfo, api: API): string {
   }
 
   /**
-   * Collect variable names that are *definitively* assigned from BigNumber.from().
+   * Variables definitively holding a BigNumber: assigned from BigNumber.from()
+   * or from an arithmetic chain on a known BigNumber (e.g. from(2).pow(128)).
    * Conservative: only direct const/let/var declarations and simple assignments.
+   * Repeated until nothing new is found, so `b = a.mul(2)` is tracked once `a` is.
    */
   const knownBigNumbers = new Set<string>();
 
-  root.find(j.VariableDeclarator).forEach((path) => {
-    const { id, init } = path.node;
-    if (
-      id.type === 'Identifier' &&
-      init != null &&
-      isBigNumberFromCall(init as Expression)
-    ) {
-      knownBigNumbers.add((id as { name: string }).name);
+  /** True for a BigNumber-valued expression, before or after conversion. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function isKnownBigNumber(node: any): boolean {
+    if (!node) return false;
+    if (isBigNumberFromCall(node as Expression)) return true;
+    if (node.type === 'Identifier') return knownBigNumbers.has(node.name);
+    if (node.type === 'BigIntLiteral') return true;
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'BigInt') {
+      return true;
     }
-  });
-
-  root.find(j.AssignmentExpression).forEach((path) => {
-    const { left, right } = path.node;
-    if (
-      left.type === 'Identifier' &&
-      isBigNumberFromCall(right as Expression)
-    ) {
-      knownBigNumbers.add((left as { name: string }).name);
+    // already converted: a ** b, a - 1n, ...
+    if (node.type === 'BinaryExpression' && BIGINT_BINARY_OPERATORS.has(node.operator)) {
+      return isKnownBigNumber(node.left) || isKnownBigNumber(node.right);
     }
-  });
+    // not yet converted: knownBN.pow(128), knownBN.sub(1), knownBN.abs()
+    if (
+      node.type === 'CallExpression' &&
+      node.callee.type === 'MemberExpression' &&
+      !node.callee.computed &&
+      node.callee.property.type === 'Identifier' &&
+      (node.callee.property.name in BN_ARITHMETIC_OPS || node.callee.property.name === 'abs')
+    ) {
+      return isKnownBigNumber(node.callee.object);
+    }
+    return false;
+  }
 
-  /** True if the expression is a tracked BigNumber value. */
-  function isKnownBigNumber(node: Expression): boolean {
-    return (
-      isBigNumberFromCall(node) ||
-      (node.type === 'Identifier' &&
-        // Double-cast through unknown: the jscodeshift Expression union doesn't
-        // narrow to Identifier automatically, but we've already checked the type.
-        knownBigNumbers.has((node as unknown as { name: string }).name))
-    );
+  for (let changed = true; changed; ) {
+    changed = false;
+    root.find(j.VariableDeclarator).forEach((path) => {
+      const { id, init } = path.node;
+      if (id.type === 'Identifier' && init != null && !knownBigNumbers.has(id.name) && isKnownBigNumber(init)) {
+        knownBigNumbers.add(id.name);
+        changed = true;
+      }
+    });
+    root.find(j.AssignmentExpression).forEach((path) => {
+      const { left, right } = path.node;
+      if (left.type === 'Identifier' && !knownBigNumbers.has(left.name) && isKnownBigNumber(right)) {
+        knownBigNumbers.add(left.name);
+        changed = true;
+      }
+    });
   }
 
   /**
@@ -178,7 +203,10 @@ export default function transform(file: FileInfo, api: API): string {
    * Walk up the path chain to find the nearest Statement node and prepend a
    * TODO line comment.  Idempotent — won't add twice.
    */
-  function addTodoComment(path: ASTPath<unknown>): void {
+  function addTodoComment(
+    path: ASTPath<unknown>,
+    text = 'verify this BigNumber method call and migrate manually'
+  ): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let current: ASTPath<any> = path as ASTPath<any>;
     while (current.parent && !j.Statement.check(current.node)) {
@@ -194,7 +222,7 @@ export default function transform(file: FileInfo, api: API): string {
     current.node.comments = [
       {
         type: 'CommentLine',
-        value: ' TODO(ethers-codemod): verify this BigNumber method call and migrate manually',
+        value: ` TODO(ethers-codemod): ${text}`,
         leading: true,
         trailing: false,
       },
@@ -205,23 +233,10 @@ export default function transform(file: FileInfo, api: API): string {
   // ── Step 1 — Transform method calls on confirmed BigNumbers ───────────────
   // Must run BEFORE the standalone BigNumber.from() → BigInt() pass so that
   // chained calls like `BigNumber.from(x).toNumber()` are handled atomically.
-
-  // .toNumber() → Number(x)
-  root
-    .find(j.CallExpression, (node: CallExpression): boolean =>
-      node.callee.type === 'MemberExpression' &&
-      (node.callee as MemberExpression).property.type === 'Identifier' &&
-      ((node.callee as MemberExpression).property as { name: string }).name === 'toNumber' &&
-      node.arguments.length === 0
-    )
-    .forEach((path: ASTPath<CallExpression>) => {
-      const obj = ((path.node.callee as MemberExpression).object) as Expression;
-      if (isKnownBigNumber(obj)) {
-        path.replace(j.callExpression(j.identifier('Number'), [resolveReceiver(obj)]));
-      } else {
-        addTodoComment(path);
-      }
-    });
+  //
+  // Calls are processed innermost first, so in `from(2).pow(128).sub(1)` the
+  // .pow() is converted to `BigInt(2) ** 128n` before .sub() looks at its
+  // receiver, and the whole chain becomes `BigInt(2) ** 128n - 1n`.
 
   // .toHexString() → toBeHex(x)
   // v5 returns an even-length 0x-prefixed string ("0xff", "0x01"); v6 toBeHex()
@@ -239,46 +254,70 @@ export default function transform(file: FileInfo, api: API): string {
     return j.callExpression(j.identifier('toBeHex'), [arg]);
   }
 
-  root
-    .find(j.CallExpression, (node: CallExpression): boolean =>
-      node.callee.type === 'MemberExpression' &&
-      (node.callee as MemberExpression).property.type === 'Identifier' &&
-      ((node.callee as MemberExpression).property as { name: string }).name === 'toHexString' &&
-      node.arguments.length === 0
-    )
-    .forEach((path: ASTPath<CallExpression>) => {
-      const obj = ((path.node.callee as MemberExpression).object) as Expression;
-      if (isKnownBigNumber(obj)) {
-        path.replace(toBeHexCall(resolveReceiver(obj)));
-      } else {
-        addTodoComment(path);
-      }
-    });
+  type BinaryOperator = Parameters<typeof j.binaryExpression>[0];
 
-  // .add() / .sub() / .mul() / .div() / .eq() / .gt() / .gte() / .lt() / .lte()
-  for (const [methodName, operator] of Object.entries(BN_BINARY_OPS)) {
-    root
-      .find(j.CallExpression, (node: CallExpression): boolean =>
-        node.callee.type === 'MemberExpression' &&
-        (node.callee as MemberExpression).property.type === 'Identifier' &&
-        ((node.callee as MemberExpression).property as { name: string }).name === methodName &&
-        node.arguments.length === 1
-      )
-      .forEach((path: ASTPath<CallExpression>) => {
-        const obj = ((path.node.callee as MemberExpression).object) as Expression;
-        if (!isKnownBigNumber(obj)) {
-          // .add/.sub etc. are too generic to add a TODO — just skip silently
-          return;
-        }
-        const left = resolveReceiver(obj);
-        // Cast through any: jscodeshift's Expression and ast-types' ExpressionKind
-        // are structurally incompatible in newer @types/jscodeshift (TSInstantiationExpression
-        // is in ExpressionKind but not in jscodeshift's re-export of Expression).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const right = toBigIntOperand(path.node.arguments[0] as any);
-        // recast's printer will add parentheses as needed based on parent precedence
-        path.replace(j.binaryExpression(operator as Parameters<typeof j.binaryExpression>[0], left, right));
-      });
+  const methodCalls = root
+    .find(j.CallExpression, (node: CallExpression): boolean => {
+      if (node.callee.type !== 'MemberExpression') return false;
+      const mem = node.callee as MemberExpression;
+      if (mem.computed || mem.property.type !== 'Identifier') return false;
+      const name = (mem.property as { name: string }).name;
+      return (
+        (name in BN_BINARY_OPS && node.arguments.length === 1) ||
+        (BN_UNARY_METHODS.has(name) && node.arguments.length === 0)
+      );
+    })
+    .paths()
+    .reverse(); // innermost first
+
+  for (const path of methodCalls) {
+    const callee = path.node.callee as MemberExpression;
+    const method = (callee.property as { name: string }).name;
+    const obj = callee.object as Expression;
+
+    if (!isKnownBigNumber(obj)) {
+      // .add/.sub etc. are too generic to add a TODO; these two are BigNumber-specific
+      if (BN_SPECIFIC_METHODS.has(method)) addTodoComment(path);
+      continue;
+    }
+    const left = resolveReceiver(obj);
+
+    if (method === 'toNumber') {
+      path.replace(j.callExpression(j.identifier('Number'), [left]));
+    } else if (method === 'toHexString') {
+      path.replace(toBeHexCall(left));
+    } else if (method === 'isZero') {
+      path.replace(j.binaryExpression('===', left, j.bigIntLiteral('0')));
+    } else if (method === 'isNegative') {
+      path.replace(j.binaryExpression('<', left, j.bigIntLiteral('0')));
+    } else if (method === 'abs') {
+      // Needs the value twice, so only rewrite when that is free of side effects.
+      if (left.type === 'Identifier') {
+        path.replace(
+          j.conditionalExpression(
+            j.binaryExpression('<', left, j.bigIntLiteral('0')),
+            j.unaryExpression('-', j.identifier(left.name)),
+            j.identifier(left.name)
+          )
+        );
+      } else {
+        addTodoComment(path, '.abs() on an expression: store it in a variable v, then use (v < 0n ? -v : v)');
+      }
+    } else {
+      // Cast through any: jscodeshift's Expression and ast-types' ExpressionKind
+      // are structurally incompatible in newer @types/jscodeshift.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const right = toBigIntOperand(path.node.arguments[0] as any);
+      // recast's printer adds parentheses as needed based on precedence
+      path.replace(j.binaryExpression(BN_BINARY_OPS[method] as BinaryOperator, left, right));
+      if (method === 'mod') {
+        addTodoComment(
+          path,
+          'v5 .mod() never returned a negative number; % keeps the sign of the left side. ' +
+            'If it can be negative, use ((a % b) + b) % b'
+        );
+      }
+    }
   }
 
   // ── Step 2 — Standalone BigNumber.from(x) → BigInt(x) ────────────────────

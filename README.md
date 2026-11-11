@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-195%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-205%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -36,6 +36,10 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | BigNumber — toHexString() on tracked var | `bn.toHexString()` | `toBeHex(bn)` (keeps the `0x` prefix) | ✅ Automated |
 | BigNumber — arithmetic on tracked var | `bn.add(x)` / `bn.sub(x)` / `bn.mul(x)` / `bn.div(x)` | `bn + x` / `bn - x` / `bn * x` / `bn / x` (operands made bigint: `2` → `2n`, `fee` → `BigInt(fee)`) | ✅ Automated |
 | BigNumber — comparisons on tracked var | `bn.gt(x)` / `bn.gte(x)` / `bn.lt(x)` / `bn.lte(x)` / `bn.eq(x)` | `bn > x` / `bn >= x` / `bn < x` / `bn <= x` / `bn === x` (same operand rule) | ✅ Automated |
+| BigNumber — pow / shl / shr on tracked var | `bn.pow(18)` / `bn.shl(8)` / `bn.shr(8)` | `bn ** 18n` / `bn << 8n` / `bn >> 8n` | ✅ Automated |
+| BigNumber — mod on tracked var | `bn.mod(x)` | `bn % x` + TODO (v5 mod is never negative; `%` keeps the sign) | ✅ Automated (flagged) |
+| BigNumber — isZero / isNegative / abs | `bn.isZero()` / `bn.isNegative()` / `bn.abs()` | `bn === 0n` / `bn < 0n` / `bn < 0n ? -bn : bn` | ✅ Automated |
+| BigNumber — chains | `BigNumber.from(2).pow(128).sub(1)` | `BigInt(2) ** 128n - 1n` | ✅ Automated |
 | BigNumber — remove import specifier | `import { BigNumber } from 'ethers'` | _(removed)_ | ✅ Automated |
 | BigNumber — toNumber() untracked | `contractReturn.toNumber()` | _(flagged)_ | ⚠️ AI-assisted |
 | BigNumber — toHexString() untracked | `contractReturn.toHexString()` | _(flagged)_ | ⚠️ AI-assisted |
