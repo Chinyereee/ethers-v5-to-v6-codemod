@@ -11,6 +11,7 @@ import renameContractMethods from './rename-contract-methods';
 import renameProviderMethods from './rename-provider-methods';
 import gasPriceToFeeData from './gasPrice-to-feeData';
 import updateImports from './update-imports';
+import awaitGetSigner from './await-getSigner';
 
 // ── Named exports ─────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ export {
   renameProviderMethods,
   gasPriceToFeeData,
   updateImports,
+  awaitGetSigner,
 };
 
 // ── Pipeline ─────────────────────────────────────────────────────────────────
@@ -35,6 +37,8 @@ export {
  *  - bigNumber-to-bigint must run before update-imports (removes `BigNumber` usages)
  *  - rename-providers must run before update-imports (removes `providers` usages)
  *  - rename-constants must run before update-imports (removes `constants` usages)
+ *  - await-getSigner runs after rename-providers (it doesn't depend on the
+ *    provider class name, but keeps the diff readable in that order)
  *  - update-imports must run last (cleans up any remaining deprecated specifiers)
  */
 const PIPELINE: readonly Transform[] = [
@@ -45,6 +49,7 @@ const PIPELINE: readonly Transform[] = [
   renameContractMethods,
   renameProviderMethods,
   gasPriceToFeeData,
+  awaitGetSigner,
   updateImports,
 ];
 
@@ -111,6 +116,7 @@ export function runAll(
     'rename-contract-methods',
     'rename-provider-methods',
     'gasPrice-to-feeData',
+    'await-getSigner',
     'update-imports',
   ];
 

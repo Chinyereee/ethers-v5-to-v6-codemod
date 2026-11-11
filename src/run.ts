@@ -20,6 +20,7 @@ import renameContractMethods from './transforms/rename-contract-methods';
 import renameProviderMethods from './transforms/rename-provider-methods';
 import gasPriceToFeeData from './transforms/gasPrice-to-feeData';
 import updateImports from './transforms/update-imports';
+import awaitGetSigner from './transforms/await-getSigner';
 
 // ── Transform pipeline ───────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ const PIPELINE: Array<{ name: string; fn: Transform }> = [
   { name: 'rename-contract-methods', fn: renameContractMethods },
   { name: 'rename-provider-methods', fn: renameProviderMethods },
   { name: 'gasPrice-to-feeData',     fn: gasPriceToFeeData },
+  { name: 'await-getSigner',         fn: awaitGetSigner },
   { name: 'update-imports',          fn: updateImports },
 ];
 

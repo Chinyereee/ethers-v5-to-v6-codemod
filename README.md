@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-176%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-195%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -57,7 +57,10 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | Import cleanup — providers | `import { providers } from 'ethers'` | _(removed)_ | ✅ Automated |
 | Event filters | `contract.filters.Transfer(from, to)` | `contract.filters.Transfer(from, to)` _(API reworked)_ | ❌ Manual |
 | Error handling | `error.data` / `Logger.errors` | `error.info` / `ethers.errors` | ❌ Manual |
-| Signer async | `provider.getSigner()` | `await provider.getSigner()` | ❌ Manual |
+| Signer async — in async function | `provider.getSigner()` | `await provider.getSigner()` | ✅ Automated |
+| Signer async — plain named function / method | `function f() { return p.getSigner(); }` | `async function f() { return await p.getSigner(); }` + TODO to await its callers | ✅ Automated (flagged) |
+| Signer async — JSX `on*` handler | `onClick={() => p.getSigner()}` | `onClick={async () => await p.getSigner()}` | ✅ Automated |
+| Signer async — constructor, getter, callback, component, hook, top level | `useEffect(() => { p.getSigner() })` | _(flagged)_ | ⚠️ AI-assisted |
 
 ---
 
@@ -92,7 +95,7 @@ npx ts-node src/run.ts ./your-project
 The runner will:
 1. Recursively find all `.ts`, `.tsx`, `.js`, `.jsx` files
 2. Skip files with no ethers imports (no false positives on unrelated code)
-3. Run all 8 transforms in the correct dependency order
+3. Run all 9 transforms in the correct dependency order
 4. Print a colorized summary with per-transform change counts
 5. List any files flagged with TODO comments for AI-assisted review
 

@@ -52,10 +52,17 @@ require understanding the semantics of each filter, not just its syntax.
 That is the kind of thing that causes false positives. We documented the 
 AI prompt for it instead.
 
+## Why getSigner() is only made async where that is safe
+
+`provider.getSigner()` returns a Promise in v6. Adding `await` inside an
+async function is mechanical. Making a plain function async changes what
+its callers receive, so the transform does it only for named functions
+and methods, and leaves a TODO telling you to await the callers. It never
+makes a constructor, getter, callback argument (e.g. `useEffect`), React
+component or hook async, because that breaks them; those are flagged
+instead. JSX `on*` handlers are made async because React ignores their
+return value.
+
 ## What we would build next
 
-A transform for `provider.getSigner()` becoming async is the most 
-tractable next step — it is a mechanical change (add await, mark 
-containing function async) that jscodeshift can handle with some 
-call-graph awareness. Event filters would follow, scoped to the common 
-patterns only.
+Event filters, scoped to the common patterns only.
