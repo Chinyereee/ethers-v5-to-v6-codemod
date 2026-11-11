@@ -63,6 +63,21 @@ const PIPELINE: readonly Transform[] = [
   updateImports,
 ];
 
+/** Transform names, in the order PIPELINE runs them. */
+export const PIPELINE_ORDER: readonly string[] = [
+  'deep-imports',
+  'rename-utils',
+  'bigNumber-to-bigint',
+  'hexlify-numbers',
+  'rename-providers',
+  'rename-constants',
+  'rename-contract-methods',
+  'rename-provider-methods',
+  'gasPrice-to-feeData',
+  'await-getSigner',
+  'update-imports',
+  ];
+
 // ── Parser selection ──────────────────────────────────────────────────────────
 
 type SupportedParser = 'ts' | 'tsx' | 'babel';
@@ -120,19 +135,7 @@ export function runAll(
     report: () => { /* no-op */ },
   };
 
-  const transformNames: readonly string[] = [
-    'deep-imports',
-    'rename-utils',
-    'bigNumber-to-bigint',
-    'hexlify-numbers',
-    'rename-providers',
-    'rename-constants',
-    'rename-contract-methods',
-    'rename-provider-methods',
-    'gasPrice-to-feeData',
-    'await-getSigner',
-    'update-imports',
-  ];
+  const transformNames = PIPELINE_ORDER;
 
   const appliedTransforms: string[] = [];
 

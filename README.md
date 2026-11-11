@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-253%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-261%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -111,6 +111,27 @@ The runner will:
 3. Run all 11 transforms in the correct dependency order
 4. Print a colorized summary with per-transform change counts
 5. List any files flagged with TODO comments for AI-assisted review
+
+---
+
+## Programmatic API
+
+```ts
+import { migrateDirectory } from 'ethers-v5-to-v6';
+
+const result = migrateDirectory('./cloned-repo');        // or { dryRun: true }
+// {
+//   filesScanned: 41, ethersFiles: 31,
+//   modified: ['test/shared/permit.ts', ...],             // relative paths
+//   transformsApplied: ['deep-imports', 'rename-utils', ...],
+//   todos: [{ file: 'src/App.tsx', line: 12, text: 'TODO(ethers-codemod): ...' }],
+//   failures: [{ file: 'src/bad.ts', error: '...' }],     // left untouched
+// }
+```
+
+Files are migrated all-or-nothing, symlinks are never followed, and error
+messages contain relative paths only, so the result is safe to return from an
+API that runs the codemod on untrusted repositories.
 
 ---
 

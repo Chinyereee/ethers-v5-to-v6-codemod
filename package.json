@@ -2,11 +2,16 @@
   "name": "ethers-v5-to-v6",
   "version": "1.1.0",
   "description": "Automates 90.3% of the ethers.js v5 to v6 migration",
-  "main": "dist/transforms/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "jest --config jest.config.js",
     "transform": "jscodeshift",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "keywords": [
     "ethereum",
@@ -18,16 +23,17 @@
   "author": "Chinyereee",
   "license": "ISC",
   "type": "commonjs",
+  "dependencies": {
+    "jscodeshift": "^17.3.0"
+  },
   "devDependencies": {
     "@codemod.com/jssg-types": "^1.6.0",
     "@types/jest": "^30.0.0",
     "@types/jscodeshift": "^17.3.0",
     "@types/node": "^22.20.5",
     "jest": "^30.3.0",
-    "jscodeshift": "^17.3.0",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
-  },
-  "types": "dist/transforms/index.d.ts"
+  }
 }
