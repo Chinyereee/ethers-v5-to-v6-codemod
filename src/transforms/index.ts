@@ -25,10 +25,6 @@ export {
   updateImports,
 };
 
-// ── JSSG (ast-grep) transforms ────────────────────────────────────────────────
-
-export * as jssg from "../../scripts/index";
-
 // ── Pipeline ─────────────────────────────────────────────────────────────────
 
 /**
@@ -102,6 +98,7 @@ export function runAll(
 
   const api: API = {
     jscodeshift: j,
+    j,
     stats: () => { /* no-op */ },
     report: () => { /* no-op */ },
   };
@@ -124,7 +121,8 @@ export function runAll(
 
     let result: string | null | undefined | void;
     try {
-      result = transform(fileInfo, api);
+      // All transforms in PIPELINE are synchronous.
+      result = transform(fileInfo, api, {}) as string | null | undefined | void;
     } catch (err) {
       const name = transformNames[idx];
       throw new Error(
