@@ -60,13 +60,15 @@ const PIPELINE: readonly Transform[] = [
 
 // ── Parser selection ──────────────────────────────────────────────────────────
 
-type SupportedParser = 'tsx' | 'babel';
+type SupportedParser = 'ts' | 'tsx' | 'babel';
 
 function inferParser(filePath: string): SupportedParser {
   const ext = nodePath.extname(filePath).toLowerCase();
-  // Use tsx for all TypeScript files — it's a superset of ts and handles
-  // both .ts and .tsx without needing a separate check.
-  return ['.ts', '.tsx'].includes(ext) ? 'tsx' : 'babel';
+  // tsx is NOT a superset of ts: it rejects angle-bracket casts (`<any>x`),
+  // which are legal in .ts files. Use the parser that matches the extension.
+  if (ext === '.ts') return 'ts';
+  if (ext === '.tsx') return 'tsx';
+  return 'babel';
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

@@ -108,7 +108,8 @@ function countTodos(source: string): number {
 
 function applyTransform(fn: Transform, source: string, filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
-  const parser = ['.ts', '.tsx'].includes(ext) ? 'tsx' : 'babel';
+  // .ts must use the ts parser: tsx rejects angle-bracket casts (`<any>x`)
+  const parser = ext === '.ts' ? 'ts' : ext === '.tsx' ? 'tsx' : 'babel';
   const j = jscodeshift.withParser(parser);
   const fileInfo: FileInfo = { source, path: filePath };
   const api = {
