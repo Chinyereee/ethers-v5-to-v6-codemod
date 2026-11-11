@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-100%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-176%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -51,6 +51,7 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | Gas price — awaited | `await provider.getGasPrice()` | `(await provider.getFeeData()).gasPrice` | ✅ Automated |
 | Gas price — FeeData type | `ethers.providers.FeeData` | `ethers.FeeData` | ✅ Automated |
 | Gas price — non-awaited | `provider.getGasPrice().then(...)` | _(flagged)_ | ⚠️ AI-assisted |
+| Import styles | `import * as ethers`, `import ethers`, `import { ethers } from 'ethers'` | all rewritten the same way | ✅ Automated |
 | Import cleanup — utils | `import { utils } from 'ethers'` | _(removed)_ | ✅ Automated |
 | Import cleanup — BigNumber | `import { BigNumber } from 'ethers'` | _(removed)_ | ✅ Automated |
 | Import cleanup — providers | `import { providers } from 'ethers'` | _(removed)_ | ✅ Automated |
@@ -91,7 +92,7 @@ npx ts-node src/run.ts ./your-project
 The runner will:
 1. Recursively find all `.ts`, `.tsx`, `.js`, `.jsx` files
 2. Skip files with no ethers imports (no false positives on unrelated code)
-3. Run all 5 transforms in the correct dependency order
+3. Run all 8 transforms in the correct dependency order
 4. Print a colorized summary with per-transform change counts
 5. List any files flagged with TODO comments for AI-assisted review
 

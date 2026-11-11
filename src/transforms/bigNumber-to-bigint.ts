@@ -7,6 +7,7 @@ import type {
   Expression,
   ImportDeclaration,
 } from 'jscodeshift';
+import { bindsEthersNamespace } from './ethers-import';
 
 // BigNumber instance methods that become binary operators
 const BN_BINARY_OPS: Record<string, string> = {
@@ -40,12 +41,9 @@ export default function transform(file: FileInfo, api: API): string {
 
   ethersImports.forEach((path) => {
     for (const spec of path.node.specifiers ?? []) {
-      if (
-        spec.type === 'ImportNamespaceSpecifier' ||
-        spec.type === 'ImportDefaultSpecifier'
-      ) {
+      if (bindsEthersNamespace(spec)) {
         hasEthersNamespace = true;
-        if (spec.local?.name === 'ethers') ethersNamespaceIsNamedEthers = true;
+        if ((spec.local?.name ?? 'ethers') === 'ethers') ethersNamespaceIsNamedEthers = true;
       } else if (
         spec.type === 'ImportSpecifier' &&
         spec.imported.type === 'Identifier' &&

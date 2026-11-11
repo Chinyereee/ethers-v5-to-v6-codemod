@@ -4,6 +4,7 @@ import type {
   MemberExpression,
   ImportDeclaration,
 } from 'jscodeshift';
+import { bindsEthersNamespace } from './ethers-import';
 
 // ethers.constants.X → ethers.Y (simple property renames)
 const CONSTANTS_TO_ETHERS: Record<string, string> = {
@@ -36,10 +37,7 @@ export default function transform(file: FileInfo, api: API): string {
 
   ethersImports.forEach((path) => {
     for (const spec of path.node.specifiers ?? []) {
-      if (
-        spec.type === 'ImportNamespaceSpecifier' ||
-        spec.type === 'ImportDefaultSpecifier'
-      ) {
+      if (bindsEthersNamespace(spec)) {
         hasEthersNamespace = true;
       } else if (
         spec.type === 'ImportSpecifier' &&

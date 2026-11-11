@@ -7,6 +7,7 @@ import type {
   ImportDeclaration,
   TSTypeReference,
 } from 'jscodeshift';
+import { bindsEthersNamespace } from './ethers-import';
 
 const STATIC_PROVIDER_TODO =
   ' TODO: ethers v6 - if StaticJsonRpcProvider was called with a network argument, add { staticNetwork: network } as third arg to JsonRpcProvider to preserve static behavior';
@@ -116,10 +117,7 @@ export default function transform(file: FileInfo, api: API): string {
 
   ethersImports.forEach((path) => {
     for (const spec of path.node.specifiers ?? []) {
-      if (
-        spec.type === 'ImportNamespaceSpecifier' ||
-        spec.type === 'ImportDefaultSpecifier'
-      ) {
+      if (bindsEthersNamespace(spec)) {
         hasEthersNamespace = true;
       } else if (
         spec.type === 'ImportSpecifier' &&

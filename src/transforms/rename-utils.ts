@@ -6,6 +6,7 @@ import type {
   MemberExpression,
   ImportDeclaration,
 } from 'jscodeshift';
+import { bindsEthersNamespace } from './ethers-import';
 
 // Maps ethers.utils.X -> ethers.Y (simple renames)
 const UTILS_TO_ETHERS: Record<string, string> = {
@@ -52,7 +53,7 @@ export default function transform(file: FileInfo, api: API): string {
   // Track whether `ethers` is imported as a namespace or specifier
   let hasEthersNamespace = false; // import * as ethers / import ethers
   let hasUtilsDestructured = false; // import { utils } from 'ethers'
-  let hasEthersSpecifier = false;   // import { ethers } from 'ethers' (rare but handle)
+  let hasEthersSpecifier = false;   // import { ethers } from 'ethers' (the v5 docs style)
 
   const ethersImports = root.find(j.ImportDeclaration, (node: ImportDeclaration) =>
     node.source.value === 'ethers'
@@ -73,6 +74,8 @@ export default function transform(file: FileInfo, api: API): string {
         }
         if (spec.imported.type === 'Identifier' && spec.imported.name === 'ethers') {
           hasEthersSpecifier = true;
+          // import { ethers } from 'ethers' binds the whole library, like a namespace import
+          if (bindsEthersNamespace(spec)) hasEthersNamespace = true;
         }
       }
     }

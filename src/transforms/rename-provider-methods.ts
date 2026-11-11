@@ -6,6 +6,7 @@ import type {
   MemberExpression,
   ImportDeclaration,
 } from 'jscodeshift';
+import { bindsEthersNamespace } from './ethers-import';
 
 const SEND_TX_TODO =
   ' TODO: ethers v6 - verify this is provider.sendTransaction (now broadcastTransaction) and not signer.sendTransaction (which stays the same in v6)';
@@ -23,10 +24,7 @@ export default function transform(file: FileInfo, api: API): string {
 
   ethersImports.forEach((path) => {
     for (const spec of path.node.specifiers ?? []) {
-      if (
-        spec.type === 'ImportNamespaceSpecifier' ||
-        spec.type === 'ImportDefaultSpecifier'
-      ) {
+      if (bindsEthersNamespace(spec)) {
         hasEthersNamespace = true;
       } else if (
         spec.type === 'ImportSpecifier' &&
