@@ -12,6 +12,7 @@ import renameProviderMethods from './rename-provider-methods';
 import gasPriceToFeeData from './gasPrice-to-feeData';
 import updateImports from './update-imports';
 import awaitGetSigner from './await-getSigner';
+import deepImports from './deep-imports';
 
 // ── Named exports ─────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export {
   gasPriceToFeeData,
   updateImports,
   awaitGetSigner,
+  deepImports,
 };
 
 // ── Pipeline ─────────────────────────────────────────────────────────────────
@@ -33,6 +35,8 @@ export {
  * Ordered list of transforms.
  *
  * Ordering constraints:
+ *  - deep-imports runs first: it moves ethers/lib/* and @ethersproject/*
+ *    imports to 'ethers' so the other transforms see them
  *  - rename-utils must run before update-imports (removes `utils` usages first)
  *  - bigNumber-to-bigint must run before update-imports (removes `BigNumber` usages)
  *  - rename-providers must run before update-imports (removes `providers` usages)
@@ -42,6 +46,7 @@ export {
  *  - update-imports must run last (cleans up any remaining deprecated specifiers)
  */
 const PIPELINE: readonly Transform[] = [
+  deepImports,
   renameUtils,
   bigNumberToBigint,
   renameProviders,
@@ -109,6 +114,7 @@ export function runAll(
   };
 
   const transformNames: readonly string[] = [
+    'deep-imports',
     'rename-utils',
     'bigNumber-to-bigint',
     'rename-providers',

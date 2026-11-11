@@ -13,7 +13,7 @@ const STATIC_PROVIDER_TODO =
   ' TODO: ethers v6 - if StaticJsonRpcProvider was called with a network argument, add { staticNetwork: network } as third arg to JsonRpcProvider to preserve static behavior';
 
 // v5 providers.X → v6 ethers.Y  (StaticJsonRpcProvider merged into JsonRpcProvider)
-const PROVIDER_MAP: Record<string, string> = {
+export const PROVIDER_MAP: Record<string, string> = {
   Web3Provider: 'BrowserProvider',
   JsonRpcProvider: 'JsonRpcProvider',
   WebSocketProvider: 'WebSocketProvider',

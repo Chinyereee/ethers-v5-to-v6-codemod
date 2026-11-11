@@ -7,7 +7,7 @@ import type {
 import { bindsEthersNamespace } from './ethers-import';
 
 // ethers.constants.X → ethers.Y (simple property renames)
-const CONSTANTS_TO_ETHERS: Record<string, string> = {
+export const CONSTANTS_TO_ETHERS: Record<string, string> = {
   AddressZero: 'ZeroAddress',
   HashZero: 'ZeroHash',
   MaxUint256: 'MaxUint256',
@@ -17,7 +17,7 @@ const CONSTANTS_TO_ETHERS: Record<string, string> = {
 };
 
 // ethers.constants.X → bigint literal (numeric constants removed in v6)
-const CONSTANTS_TO_BIGINT: Record<string, string> = {
+export const CONSTANTS_TO_BIGINT: Record<string, string> = {
   NegativeOne: '-1n',
   Zero: '0n',
   One: '1n',

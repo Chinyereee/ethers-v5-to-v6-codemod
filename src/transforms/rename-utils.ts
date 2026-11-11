@@ -9,7 +9,7 @@ import type {
 import { bindsEthersNamespace } from './ethers-import';
 
 // Maps ethers.utils.X -> ethers.Y (simple renames)
-const UTILS_TO_ETHERS: Record<string, string> = {
+export const UTILS_TO_ETHERS: Record<string, string> = {
   parseEther: 'parseEther',
   formatEther: 'formatEther',
   parseUnits: 'parseUnits',

@@ -21,10 +21,12 @@ import renameProviderMethods from './transforms/rename-provider-methods';
 import gasPriceToFeeData from './transforms/gasPrice-to-feeData';
 import updateImports from './transforms/update-imports';
 import awaitGetSigner from './transforms/await-getSigner';
+import deepImports from './transforms/deep-imports';
 
 // ── Transform pipeline ───────────────────────────────────────────────────────
 
 const PIPELINE: Array<{ name: string; fn: Transform }> = [
+  { name: 'deep-imports',            fn: deepImports },
   { name: 'rename-utils',            fn: renameUtils },
   { name: 'bigNumber-to-bigint',     fn: bigNumberToBigint },
   { name: 'rename-providers',        fn: renameProviders },
@@ -90,7 +92,8 @@ function collectFiles(dir: string): string[] {
 
 /** Quick pre-filter: does the file contain an ethers import at all? */
 function hasEthersImport(source: string): boolean {
-  return /from\s+['"]ethers['"]/.test(source);
+  // 'ethers', or a v5 deep path ('ethers/lib/utils', '@ethersproject/providers', ...)
+  return /from\s+['"](ethers(\/lib[^'"]*)?|@ethersproject\/[^'"]+)['"]/.test(source);
 }
 
 /**
