@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-205%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-213%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -40,6 +40,9 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | BigNumber — mod on tracked var | `bn.mod(x)` | `bn % x` + TODO (v5 mod is never negative; `%` keeps the sign) | ✅ Automated (flagged) |
 | BigNumber — isZero / isNegative / abs | `bn.isZero()` / `bn.isNegative()` / `bn.abs()` | `bn === 0n` / `bn < 0n` / `bn < 0n ? -bn : bn` | ✅ Automated |
 | BigNumber — chains | `BigNumber.from(2).pow(128).sub(1)` | `BigInt(2) ** 128n - 1n` | ✅ Automated |
+| BigNumber — types | `x: BigNumber` / `Promise<BigNumber>` / `ethers.BigNumber` | `x: bigint` / `Promise<bigint>` / `bigint` | ✅ Automated |
+| BigNumber — isBigNumber / from as a function | `BigNumber.isBigNumber(v)` / `xs.map(BigNumber.from)` | `typeof v === 'bigint'` / `xs.map(BigInt)` | ✅ Automated |
+| BigNumber — anything else (`fromTwos`, `instanceof`) | `BigNumber.fromTwos(v, 8)` | _(flagged)_ | ⚠️ AI-assisted |
 | BigNumber — remove import specifier | `import { BigNumber } from 'ethers'` | _(removed)_ | ✅ Automated |
 | BigNumber — toNumber() untracked | `contractReturn.toNumber()` | _(flagged)_ | ⚠️ AI-assisted |
 | BigNumber — toHexString() untracked | `contractReturn.toHexString()` | _(flagged)_ | ⚠️ AI-assisted |

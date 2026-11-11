@@ -310,3 +310,64 @@ describe('bigNumber-to-bigint – more methods, and chains on converted results'
     expect(BigInt(5) * BigInt(10) ** 18n).toBe(5000000000000000000n);
   });
 });
+
+describe('bigNumber-to-bigint – BigNumber types and other references', () => {
+  // Found on Uniswap v3-periphery: the BigNumber import was removed but
+  // `: BigNumber` annotations stayed, so 10 files no longer compiled.
+  const out = (body: string) => applyTransform(transform, named(body));
+
+  it('return type: (): BigNumber → (): bigint', () => {
+    expect(out('export function f(n: number): BigNumber {\n  return BigNumber.from(n);\n}'))
+      .toBe(normalize('export function f(n: number): bigint {\n  return BigInt(n);\n}'));
+  });
+
+  it('unions, arrays, tuples, generics and optional properties', () => {
+    const input = [
+      'let a: BigNumber | number;',
+      'let b: BigNumber[];',
+      'let c: [BigNumber, number][];',
+      'let d: Promise<BigNumber>;',
+      'interface I {\n  x?: BigNumber;\n}',
+    ].join('\n');
+    const expected = [
+      'let a: bigint | number;',
+      'let b: bigint[];',
+      'let c: [bigint, number][];',
+      'let d: Promise<bigint>;',
+      'interface I {\n  x?: bigint;\n}',
+    ].join('\n');
+    expect(out(input)).toBe(normalize(expected));
+  });
+
+  it('namespace type: ethers.BigNumber → bigint', () => {
+    expect(applyTransform(transform, ns('let a: ethers.BigNumber;')))
+      .toBe(normalize(ns('let a: bigint;')));
+  });
+
+  it("BigNumber.isBigNumber(x) → typeof x === 'bigint'", () => {
+    expect(out('if (BigNumber.isBigNumber(v)) {}'))
+      .toBe(normalize("if (typeof v === 'bigint') {}"));
+  });
+
+  it('BigNumber.from passed as a function → BigInt', () => {
+    expect(out('const xs = values.map(BigNumber.from);'))
+      .toBe(normalize('const xs = values.map(BigInt);'));
+  });
+
+  it('leaves BigNumberish alone (v6 still exports it)', () => {
+    const input = "import { BigNumber, BigNumberish } from 'ethers';\nlet a: BigNumberish;\nconst b = BigNumber.from(1);";
+    expect(applyTransform(transform, input))
+      .toBe(normalize("import { BigNumberish } from 'ethers';\nlet a: BigNumberish;\nconst b = BigInt(1);"));
+  });
+
+  it('flags any other BigNumber reference instead of leaving a dangling name silently', () => {
+    const result = out('const x = BigNumber.fromTwos(v, 8);');
+    expect(result).toContain('TODO(ethers-codemod)');
+    expect(result).toContain('BigNumber');
+  });
+
+  it('does not touch a type named BigNumber that is not from ethers', () => {
+    const input = "import { BigNumber } from 'bignumber.js';\nlet a: BigNumber;";
+    expect(applyTransform(transform, input)).toBe(normalize(input));
+  });
+});

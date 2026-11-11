@@ -362,6 +362,87 @@ export default function transform(file: FileInfo, api: API): string {
       );
   }
 
+  // ── Step 2b — Other BigNumber references ────────────────────────────────
+  // Without this, removing the import leaves `: BigNumber` annotations and
+  // calls like BigNumber.isBigNumber() pointing at a name that no longer exists.
+
+  /** `BigNumber` (named import) or `ethers.BigNumber` (namespace) as an expression. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function isBigNumberRef(node: any): boolean {
+    if (hasBigNumberImport && node.type === 'Identifier' && node.name === 'BigNumber') return true;
+    return (
+      hasEthersNamespace &&
+      node.type === 'MemberExpression' &&
+      !node.computed &&
+      node.object.type === 'Identifier' &&
+      node.object.name === 'ethers' &&
+      node.property.type === 'Identifier' &&
+      node.property.name === 'BigNumber'
+    );
+  }
+
+  // Types: BigNumber / ethers.BigNumber → bigint
+  root.find(j.TSTypeReference).forEach((path) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const name: any = path.node.typeName;
+    const isNamed = hasBigNumberImport && name.type === 'Identifier' && name.name === 'BigNumber';
+    const isQualified =
+      hasEthersNamespace &&
+      name.type === 'TSQualifiedName' &&
+      name.left.type === 'Identifier' &&
+      name.left.name === 'ethers' &&
+      name.right.name === 'BigNumber';
+    if ((isNamed || isQualified) && !path.node.typeParameters) {
+      path.replace(j.tsBigIntKeyword());
+    }
+  });
+
+  // BigNumber.isBigNumber(x) → typeof x === 'bigint'
+  root
+    .find(j.CallExpression, (node: CallExpression): boolean => {
+      const callee = node.callee as MemberExpression;
+      return (
+        callee.type === 'MemberExpression' &&
+        isBigNumberRef(callee.object) &&
+        callee.property.type === 'Identifier' &&
+        (callee.property as { name: string }).name === 'isBigNumber' &&
+        node.arguments.length === 1
+      );
+    })
+    .replaceWith((path: ASTPath<CallExpression>) =>
+      j.binaryExpression(
+        '===',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        j.unaryExpression('typeof', path.node.arguments[0] as any),
+        j.stringLiteral('bigint')
+      )
+    );
+
+  // BigNumber.from passed as a function (e.g. values.map(BigNumber.from)) → BigInt
+  root
+    .find(j.MemberExpression, (node: MemberExpression): boolean =>
+      isBigNumberRef(node.object) &&
+      node.property.type === 'Identifier' &&
+      (node.property as { name: string }).name === 'from'
+    )
+    .filter((path) => !(path.parent.node.type === 'CallExpression' && path.parent.node.callee === path.node))
+    .replaceWith(() => j.identifier('BigInt'));
+
+  // Anything left (BigNumber.fromTwos(...), instanceof BigNumber, ...) can't be
+  // mapped mechanically: flag it rather than leave a dangling name silently.
+  root
+    .find(j.Identifier, { name: 'BigNumber' })
+    .filter((path) => {
+      const parent = path.parent.node;
+      if (parent.type === 'ImportSpecifier') return false;
+      // ethers.BigNumber is caught via its MemberExpression parent's object check below
+      if (parent.type === 'MemberExpression' && parent.property === path.node && !parent.computed) {
+        return isBigNumberRef(parent);
+      }
+      return hasBigNumberImport && parent.type !== 'TSQualifiedName';
+    })
+    .forEach((path) => addTodoComment(path, 'BigNumber no longer exists in ethers v6; replace this with bigint logic'));
+
   // ── Step 3 — Remove BigNumber from import specifiers ──────────────────────
   // (and add `toBeHex` to the first named ethers import if Step 1 used it)
   if (hasBigNumberImport) {
