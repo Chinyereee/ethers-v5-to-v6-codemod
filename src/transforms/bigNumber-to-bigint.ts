@@ -393,7 +393,10 @@ export default function transform(file: FileInfo, api: API): string {
       name.left.name === 'ethers' &&
       name.right.name === 'BigNumber';
     if ((isNamed || isQualified) && !path.node.typeParameters) {
-      path.replace(j.tsBigIntKeyword());
+      // Rename in place rather than replacing the node with a keyword node:
+      // replacing it makes recast reprint an enclosing function type as
+      // `() : bigint`, which is a syntax error. The printed text is the same.
+      path.node.typeName = j.identifier('bigint');
     }
   });
 

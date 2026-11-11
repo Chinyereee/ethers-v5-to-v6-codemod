@@ -339,6 +339,13 @@ describe('bigNumber-to-bigint – BigNumber types and other references', () => {
     expect(out(input)).toBe(normalize(expected));
   });
 
+  it('function types keep their arrow: () => BigNumber → () => bigint (Aave wadraymath.ts)', () => {
+    // Replacing the whole type node made recast reprint `() : bigint`, a syntax error.
+    const input = 'interface I {\n  ray: () => BigNumber;\n  wadMul: (a: BigNumber) => BigNumber;\n}\ntype F = (x: BigNumber) => Promise<BigNumber>;';
+    const expected = 'interface I {\n  ray: () => bigint;\n  wadMul: (a: bigint) => bigint;\n}\ntype F = (x: bigint) => Promise<bigint>;';
+    expect(out(input)).toBe(normalize(expected));
+  });
+
   it('namespace type: ethers.BigNumber → bigint', () => {
     expect(applyTransform(transform, ns('let a: ethers.BigNumber;')))
       .toBe(normalize(ns('let a: bigint;')));
