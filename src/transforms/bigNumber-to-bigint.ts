@@ -36,6 +36,13 @@ const BN_UNARY_METHODS = new Set(['toNumber', 'toHexString', 'isZero', 'isNegati
 
 const BN_SPECIFIC_METHODS = new Set(['toNumber', 'toHexString']);
 
+// ethers.constants.* that were BigNumbers in v5 (checked against ethers 5.8.0)
+const V5_NUMERIC_CONSTANTS = new Set([
+  'MaxUint256', 'MinInt256', 'MaxInt256', 'WeiPerEther', 'Zero', 'One', 'Two', 'NegativeOne',
+]);
+// ...and the ones still exported by v6, now as bigint (checked against 6.17.0)
+const V6_BIGINT_CONSTANTS = new Set(['MaxUint256', 'MinInt256', 'MaxInt256', 'WeiPerEther']);
+
 export default function transform(file: FileInfo, api: API): string {
   const j = api.jscodeshift;
   const root = j(file.source);
@@ -44,6 +51,8 @@ export default function transform(file: FileInfo, api: API): string {
   let hasBigNumberImport = false; // import { BigNumber } from 'ethers'
   let hasEthersNamespace = false; // import * as ethers / import ethers from 'ethers'
   let ethersNamespaceIsNamedEthers = false; // the namespace/default local name is `ethers`
+  let constantsLocal: string | null = null; // import { constants } from 'ethers'
+  const v6ConstantLocals = new Set<string>(); // import { MaxUint256 } from 'ethers'
 
   const ethersImports = root.find(j.ImportDeclaration, (node: ImportDeclaration) =>
     node.source.value === 'ethers'
@@ -64,8 +73,39 @@ export default function transform(file: FileInfo, api: API): string {
     }
   });
 
-  if (!hasBigNumberImport && !hasEthersNamespace) {
+  ethersImports.forEach((path) => {
+    for (const spec of path.node.specifiers ?? []) {
+      if (spec.type !== 'ImportSpecifier' || spec.imported.type !== 'Identifier') continue;
+      const imported = (spec.imported as { name: string }).name;
+      const local = (spec.local as { name: string } | null)?.name ?? imported;
+      if (imported === 'constants') constantsLocal = local;
+      if (V6_BIGINT_CONSTANTS.has(imported)) v6ConstantLocals.add(local);
+    }
+  });
+
+  if (!hasBigNumberImport && !hasEthersNamespace && !constantsLocal && v6ConstantLocals.size === 0) {
     return root.toSource({ quote: 'single' });
+  }
+
+  /** constants.MaxUint256, ethers.constants.MaxUint256, ethers.MaxUint256, MaxUint256 (from ethers) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function isNumericConstant(node: any): boolean {
+    if (node.type === 'Identifier') return v6ConstantLocals.has(node.name);
+    if (node.type !== 'MemberExpression' || node.computed || node.property.type !== 'Identifier') return false;
+    const prop = node.property.name;
+    const obj = node.object;
+    if (obj.type === 'Identifier') {
+      if (constantsLocal && obj.name === constantsLocal) return V5_NUMERIC_CONSTANTS.has(prop);
+      if (hasEthersNamespace && obj.name === 'ethers') return V6_BIGINT_CONSTANTS.has(prop);
+      return false;
+    }
+    return (
+      hasEthersNamespace &&
+      obj.type === 'MemberExpression' && !obj.computed &&
+      obj.object.type === 'Identifier' && obj.object.name === 'ethers' &&
+      obj.property.type === 'Identifier' && obj.property.name === 'constants' &&
+      V5_NUMERIC_CONSTANTS.has(prop)
+    );
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -121,6 +161,7 @@ export default function transform(file: FileInfo, api: API): string {
   function isKnownBigNumber(node: any): boolean {
     if (!node) return false;
     if (isBigNumberFromCall(node as Expression)) return true;
+    if (isNumericConstant(node)) return true;
     if (node.type === 'Identifier') return knownBigNumbers.has(node.name);
     if (node.type === 'BigIntLiteral') return true;
     if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'BigInt') {

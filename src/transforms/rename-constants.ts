@@ -12,6 +12,7 @@ export const CONSTANTS_TO_ETHERS: Record<string, string> = {
   HashZero: 'ZeroHash',
   MaxUint256: 'MaxUint256',
   MinInt256: 'MinInt256',
+  MaxInt256: 'MaxInt256',
   WeiPerEther: 'WeiPerEther',
   EtherSymbol: 'EtherSymbol',
 };

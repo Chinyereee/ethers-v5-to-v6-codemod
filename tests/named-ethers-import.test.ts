@@ -55,6 +55,19 @@ describe("import { ethers } from 'ethers'", () => {
     expect(applyTransform(renameUtils, input)).toBe(normalize(input));
   });
 
+  it('runAll: constants.MaxUint256.div(2) → MaxUint256 / 2n (Uniswap CallbackValidation.spec.ts)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'constants-'));
+    const file = path.join(dir, 'a.ts');
+    writeFileSync(file, "import { constants, Contract } from 'ethers';\nconst t = deploy(constants.MaxUint256.div(2));");
+    try {
+      expect(normalize(runAll(file, { writeBack: false }).source)).toBe(
+        normalize("import { Contract, MaxUint256 } from 'ethers';\nconst t = deploy(MaxUint256 / 2n);")
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('runAll migrates a typical v5 file end to end', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'named-ethers-'));
     const file = path.join(dir, 'app.ts');

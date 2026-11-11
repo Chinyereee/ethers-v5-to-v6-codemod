@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-245%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-253%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -44,6 +44,7 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | BigNumber — types | `x: BigNumber` / `Promise<BigNumber>` / `ethers.BigNumber` | `x: bigint` / `Promise<bigint>` / `bigint` | ✅ Automated |
 | BigNumber — isBigNumber / from as a function | `BigNumber.isBigNumber(v)` / `xs.map(BigNumber.from)` | `typeof v === 'bigint'` / `xs.map(BigInt)` | ✅ Automated |
 | BigNumber — anything else (`fromTwos`, `instanceof`) | `BigNumber.fromTwos(v, 8)` | _(flagged)_ | ⚠️ AI-assisted |
+| BigNumber — v5 numeric constants | `constants.MaxUint256.div(2)` | `MaxUint256 / 2n` | ✅ Automated |
 | BigNumber — remove import specifier | `import { BigNumber } from 'ethers'` | _(removed)_ | ✅ Automated |
 | BigNumber — toNumber() untracked | `contractReturn.toNumber()` | _(flagged)_ | ⚠️ AI-assisted |
 | BigNumber — toHexString() untracked | `contractReturn.toHexString()` | _(flagged)_ | ⚠️ AI-assisted |
@@ -56,6 +57,7 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | Provider rename — InfuraProvider | `new ethers.providers.InfuraProvider(net, id)` | `new ethers.InfuraProvider(net, id)` | ✅ Automated |
 | Provider type annotations — all 7 above | `let p: ethers.providers.Web3Provider` | `let p: ethers.BrowserProvider` | ✅ Automated |
 | Provider destructured — new + types | `import { providers }; new providers.Web3Provider(w)` | `import { BrowserProvider }; new BrowserProvider(w)` | ✅ Automated |
+| Provider — sendTransaction | `provider.sendTransaction(signedTx)` | `provider.broadcastTransaction(signedTx)`; `signer.sendTransaction(tx)` unchanged | ✅ Automated (unclear receivers flagged) |
 | Gas price — awaited | `await provider.getGasPrice()` | `(await provider.getFeeData()).gasPrice` | ✅ Automated |
 | Gas price — FeeData type | `ethers.providers.FeeData` | `ethers.FeeData` | ✅ Automated |
 | Gas price — non-awaited | `provider.getGasPrice().then(...)` | _(flagged)_ | ⚠️ AI-assisted |

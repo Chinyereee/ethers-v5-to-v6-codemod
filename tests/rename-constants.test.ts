@@ -124,3 +124,10 @@ describe('rename-constants – destructured (import { constants })', () => {
     expect(twice).toBe(once);
   });
 });
+
+describe('rename-constants – MaxInt256', () => {
+  it('ethers.constants.MaxInt256 → ethers.MaxInt256', () => {
+    expect(applyTransform(transform, ns('const x = ethers.constants.MaxInt256;')))
+      .toBe(normalize(ns('const x = ethers.MaxInt256;')));
+  });
+});

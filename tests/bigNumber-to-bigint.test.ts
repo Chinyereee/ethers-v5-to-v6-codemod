@@ -378,3 +378,28 @@ describe('bigNumber-to-bigint – BigNumber types and other references', () => {
     expect(applyTransform(transform, input)).toBe(normalize(input));
   });
 });
+
+describe('bigNumber-to-bigint – v5 numeric constants are BigNumbers (bigints in v6)', () => {
+  // Uniswap v3-periphery: constants.MaxUint256.div(2) became MaxUint256.div(2),
+  // and bigint has no .div (17 type errors). Values checked against ethers 5.8.0
+  // (BigNumber) and 6.17.0 (bigint).
+  it('constants.MaxUint256.div(2) → constants.MaxUint256 / 2n', () => {
+    expect(applyTransform(transform, "import { constants } from 'ethers';\nconst a = constants.MaxUint256.div(2);"))
+      .toBe(normalize("import { constants } from 'ethers';\nconst a = constants.MaxUint256 / 2n;"));
+  });
+
+  it('namespace: ethers.constants.WeiPerEther.mul(3) → ethers.constants.WeiPerEther * 3n', () => {
+    expect(applyTransform(transform, ns('const a = ethers.constants.WeiPerEther.mul(3);')))
+      .toBe(normalize(ns('const a = ethers.constants.WeiPerEther * 3n;')));
+  });
+
+  it('v6 named import: MaxUint256.sub(1) → MaxUint256 - 1n', () => {
+    expect(applyTransform(transform, "import { MaxUint256 } from 'ethers';\nconst a = MaxUint256.sub(1);"))
+      .toBe(normalize("import { MaxUint256 } from 'ethers';\nconst a = MaxUint256 - 1n;"));
+  });
+
+  it('a MaxUint256 that is not from ethers is left alone', () => {
+    const input = "import { MaxUint256 } from './my-constants';\nconst a = MaxUint256.div(2);";
+    expect(applyTransform(transform, input)).toBe(normalize(input));
+  });
+});
