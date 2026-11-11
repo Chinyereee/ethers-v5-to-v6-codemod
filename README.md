@@ -2,7 +2,7 @@
 
 ![npm version](https://img.shields.io/badge/npm-1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-228%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-245%20passing-brightgreen)
 
 An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run it once, get a clean diff, review the flagged edge cases with AI.
 
@@ -21,6 +21,7 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 | Utils namespace — toUtf8Bytes | `ethers.utils.toUtf8Bytes(s)` | `ethers.toUtf8Bytes(s)` | ✅ Automated |
 | Utils namespace — toUtf8String | `ethers.utils.toUtf8String(b)` | `ethers.toUtf8String(b)` | ✅ Automated |
 | Utils namespace — hexlify | `ethers.utils.hexlify(b)` | `ethers.hexlify(b)` | ✅ Automated |
+| Utils — hexlify of a number / bigint | `ethers.utils.hexlify(0)` / `hexlify(parseUnits(a, d))` | `ethers.toBeHex(0)` / `toBeHex(parseUnits(a, d))` (v6 hexlify only accepts bytes) | ✅ Automated (unknown args flagged) |
 | Utils namespace — isAddress | `ethers.utils.isAddress(a)` | `ethers.isAddress(a)` | ✅ Automated |
 | Utils namespace — getAddress | `ethers.utils.getAddress(a)` | `ethers.getAddress(a)` | ✅ Automated |
 | Utils namespace — id | `ethers.utils.id(s)` | `ethers.id(s)` | ✅ Automated |
@@ -105,7 +106,7 @@ npx ts-node src/run.ts ./your-project
 The runner will:
 1. Recursively find all `.ts`, `.tsx`, `.js`, `.jsx` files
 2. Skip files with no ethers imports (no false positives on unrelated code)
-3. Run all 10 transforms in the correct dependency order
+3. Run all 11 transforms in the correct dependency order
 4. Print a colorized summary with per-transform change counts
 5. List any files flagged with TODO comments for AI-assisted review
 

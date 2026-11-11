@@ -13,6 +13,7 @@ import gasPriceToFeeData from './gasPrice-to-feeData';
 import updateImports from './update-imports';
 import awaitGetSigner from './await-getSigner';
 import deepImports from './deep-imports';
+import hexlifyNumbers from './hexlify-numbers';
 
 // ── Named exports ─────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export {
   updateImports,
   awaitGetSigner,
   deepImports,
+  hexlifyNumbers,
 };
 
 // ── Pipeline ─────────────────────────────────────────────────────────────────
@@ -43,12 +45,15 @@ export {
  *  - rename-constants must run before update-imports (removes `constants` usages)
  *  - await-getSigner runs after rename-providers (it doesn't depend on the
  *    provider class name, but keeps the diff readable in that order)
+ *  - hexlify-numbers runs after rename-utils and bigNumber-to-bigint so it
+ *    sees v6 names (ethers.hexlify, BigInt(...))
  *  - update-imports must run last (cleans up any remaining deprecated specifiers)
  */
 const PIPELINE: readonly Transform[] = [
   deepImports,
   renameUtils,
   bigNumberToBigint,
+  hexlifyNumbers,
   renameProviders,
   renameConstants,
   renameContractMethods,
@@ -119,6 +124,7 @@ export function runAll(
     'deep-imports',
     'rename-utils',
     'bigNumber-to-bigint',
+    'hexlify-numbers',
     'rename-providers',
     'rename-constants',
     'rename-contract-methods',

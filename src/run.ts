@@ -22,6 +22,7 @@ import gasPriceToFeeData from './transforms/gasPrice-to-feeData';
 import updateImports from './transforms/update-imports';
 import awaitGetSigner from './transforms/await-getSigner';
 import deepImports from './transforms/deep-imports';
+import hexlifyNumbers from './transforms/hexlify-numbers';
 
 // ── Transform pipeline ───────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ const PIPELINE: Array<{ name: string; fn: Transform }> = [
   { name: 'deep-imports',            fn: deepImports },
   { name: 'rename-utils',            fn: renameUtils },
   { name: 'bigNumber-to-bigint',     fn: bigNumberToBigint },
+  { name: 'hexlify-numbers',         fn: hexlifyNumbers },
   { name: 'rename-providers',        fn: renameProviders },
   { name: 'rename-constants',        fn: renameConstants },
   { name: 'rename-contract-methods', fn: renameContractMethods },
