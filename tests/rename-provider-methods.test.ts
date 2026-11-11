@@ -4,38 +4,50 @@ import { applyTransform, normalize } from './testHelper';
 const ns = (body: string) => `import * as ethers from 'ethers';\n${body}`;
 
 describe('rename-provider-methods – sendTransaction → broadcastTransaction', () => {
+  // v5 provider.sendTransaction(signedTx) became broadcastTransaction in v6.
+  // signer.sendTransaction(txRequest) is unchanged in v6 and is the common
+  // case: renaming it broke Safe (signer.broadcastTransaction does not exist).
   it('renames provider.sendTransaction to broadcastTransaction', () => {
     const input = 'const tx = await provider.sendTransaction(signedTx);';
-    const result = applyTransform(transform, input);
-    expect(result).toContain('broadcastTransaction(signedTx)');
-    // 'sendTransaction' only appears inside the TODO comment, not as a call
-    expect(result).not.toContain('sendTransaction(signedTx)');
+    expect(applyTransform(transform, input))
+      .toBe(normalize('const tx = await provider.broadcastTransaction(signedTx);'));
   });
 
-  it('adds TODO comment above the renamed line', () => {
-    const input = 'const tx = await provider.sendTransaction(signedTx);';
-    const result = applyTransform(transform, input);
-    expect(result).toContain('TODO: ethers v6');
-    expect(result).toContain('broadcastTransaction');
-    expect(result).toContain('signer.sendTransaction');
+  it('recognises provider receivers by name: this.provider, hre.ethers.provider, signer.provider', () => {
+    const input = [
+      'await this.provider.sendTransaction(raw);',
+      'await hre.ethers.provider.sendTransaction(raw);',
+      'await wallet.provider.sendTransaction(raw);',
+    ].join('\n');
+    const out = applyTransform(transform, input);
+    expect(out.match(/broadcastTransaction\(raw\)/g)).toHaveLength(3);
+    expect(out).not.toContain('TODO');
   });
 
-  it('signer.sendTransaction is also renamed and flagged with TODO for developer review', () => {
+  it('leaves signer.sendTransaction alone (it still exists in v6)', () => {
     const input = 'const receipt = await signer.sendTransaction(tx);';
-    const result = applyTransform(transform, input);
-    // Renamed — developer must review the TODO and revert if this is truly a signer call
-    expect(result).toContain('broadcastTransaction(tx)');
-    expect(result).toContain('TODO: ethers v6');
+    expect(applyTransform(transform, input)).toBe(normalize(input));
+  });
+
+  it('leaves any call with a transaction-request object alone (Safe: deployer.sendTransaction({ data }))', () => {
+    const input = 'const t = await deployer.sendTransaction({ data: output.data, gasLimit: 6000000 });';
+    expect(applyTransform(transform, input)).toBe(normalize(input));
+  });
+
+  it('flags, without renaming, an unknown receiver with a non-object argument', () => {
+    const out = applyTransform(transform, 'await thing.sendTransaction(payload);');
+    expect(out).toContain('thing.sendTransaction(payload)');
+    expect(out).toContain('TODO');
+    expect(out).toContain('broadcastTransaction');
   });
 
   it('preserves all arguments', () => {
     const input = 'await provider.sendTransaction(signedTx);';
-    const result = applyTransform(transform, input);
-    expect(result).toContain('broadcastTransaction(signedTx)');
+    expect(applyTransform(transform, input)).toContain('broadcastTransaction(signedTx)');
   });
 
   it('is idempotent – running twice gives same result', () => {
-    const input = 'const tx = await provider.sendTransaction(signedTx);';
+    const input = 'const tx = await provider.sendTransaction(signedTx);\nawait thing.sendTransaction(p);';
     const once = applyTransform(transform, input);
     const twice = applyTransform(transform, once);
     expect(twice).toBe(once);

@@ -9,7 +9,13 @@ import type {
 import { bindsEthersNamespace } from './ethers-import';
 
 const SEND_TX_TODO =
-  ' TODO: ethers v6 - verify this is provider.sendTransaction (now broadcastTransaction) and not signer.sendTransaction (which stays the same in v6)';
+  ' TODO: ethers v6 - if this is provider.sendTransaction(signedTx), rename it to broadcastTransaction; signer.sendTransaction(tx) is unchanged in v6';
+
+// Receivers whose name says they are a provider: provider, this.provider,
+// hre.ethers.provider, wallet.provider, jsonRpcProvider, l1Provider, ...
+const PROVIDER_NAME = /provider$/i;
+// Receivers whose name says they are a signer/wallet/account
+const SIGNER_NAME = /(signer|wallet|account|owner|deployer|sender|user|admin)\d*$/i;
 
 export default function transform(file: FileInfo, api: API): string {
   const j = api.jscodeshift;
@@ -53,12 +59,24 @@ export default function transform(file: FileInfo, api: API): string {
     ];
   }
 
-  // ── a. sendTransaction → broadcastTransaction + TODO ────────────────────────
-  // Both provider.sendTransaction and signer.sendTransaction match this pattern.
-  // We cannot distinguish them statically, so we rename all of them and add a
-  // TODO comment instructing the developer to verify which one it is.
-  // signer.sendTransaction remains valid in v6 — if the TODO reveals a signer
-  // call, the developer should revert the rename.
+  // ── a. sendTransaction → broadcastTransaction (providers only) ─────────────
+  // v5 provider.sendTransaction(signedTx) is broadcastTransaction in v6.
+  // signer.sendTransaction(txRequest) is unchanged in v6, and far more common,
+  // so we only rename when the call is clearly on a provider:
+  //  - receiver named *provider            → rename
+  //  - argument is an object literal        → a tx request, so a signer: leave
+  //  - receiver named like a signer/wallet  → leave
+  //  - anything else                        → leave, with a TODO
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const receiverName = (node: any): string | null => {
+    if (node.type === 'Identifier') return node.name;
+    if (node.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier') {
+      return node.property.name;
+    }
+    if (node.type === 'ThisExpression') return 'this';
+    return null;
+  };
 
   root
     .find(j.CallExpression, (node: CallExpression): boolean => {
@@ -69,13 +87,16 @@ export default function transform(file: FileInfo, api: API): string {
         ((callee as MemberExpression).property as { name: string }).name === 'sendTransaction'
       );
     })
-    .replaceWith((path: ASTPath<CallExpression>) => {
-      addTodoComment(path, 'broadcastTransaction', SEND_TX_TODO);
+    .forEach((path: ASTPath<CallExpression>) => {
       const callee = path.node.callee as MemberExpression;
-      return j.callExpression(
-        j.memberExpression(callee.object, j.identifier('broadcastTransaction')),
-        path.node.arguments
-      );
+      const name = receiverName(callee.object) ?? '';
+      const arg = path.node.arguments[0];
+      if (PROVIDER_NAME.test(name)) {
+        callee.property = j.identifier('broadcastTransaction');
+        return;
+      }
+      if (arg?.type === 'ObjectExpression' || SIGNER_NAME.test(name)) return;
+      addTodoComment(path, 'broadcastTransaction', SEND_TX_TODO);
     });
 
   // ── b. ethers.utils.parseTransaction(x) → ethers.Transaction.from(x) ───────
