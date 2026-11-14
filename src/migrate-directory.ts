@@ -105,7 +105,7 @@ export function migrateDirectory(dir: string, options: MigrateOptions = {}): Mig
       if (!options.dryRun) writeFileSync(file, migrated, 'utf8');
     }
 
-    migrated.split('\n').forEach((line, i) => {
+    migrated.split(/\r?\n/).forEach((line, i) => {
       const m = TODO_LINE.exec(line);
       if (m) result.todos.push({ file: rel, line: i + 1, text: m[1].trim() });
     });
@@ -113,7 +113,7 @@ export function migrateDirectory(dir: string, options: MigrateOptions = {}): Mig
 
     result.packageJson = updatePackageJson(dir, options.dryRun);
   if (result.packageJson.changed) result.modified.push('package.json');
-  
+
   result.transformsApplied = PIPELINE_ORDER.filter((t) => applied.has(t));
   return result;
 }
