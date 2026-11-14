@@ -25,10 +25,6 @@ export {
   updateImports,
 };
 
-// ── JSSG (ast-grep) transforms ────────────────────────────────────────────────
-
-export * as jssg from "../../scripts/index";
-
 // ── Pipeline ─────────────────────────────────────────────────────────────────
 
 /**
@@ -100,7 +96,8 @@ export function runAll(
   const parser = parserOverride ?? inferParser(filePath);
   const j = jscodeshift.withParser(parser);
 
-  const api: API = {
+    const api: API = {
+    j,
     jscodeshift: j,
     stats: () => { /* no-op */ },
     report: () => { /* no-op */ },
@@ -124,7 +121,7 @@ export function runAll(
 
     let result: string | null | undefined | void;
     try {
-      result = transform(fileInfo, api);
+     result = transform(fileInfo, api, {}) as string | null | undefined | void; 
     } catch (err) {
       const name = transformNames[idx];
       throw new Error(
