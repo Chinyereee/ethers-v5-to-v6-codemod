@@ -327,11 +327,23 @@ export default function transform(file: FileInfo, api: API): string {
     const method = (callee.property as { name: string }).name;
     const obj = callee.object as Expression;
 
-    if (!isKnownBigNumber(obj)) {
-      // .add/.sub etc. are too generic to add a TODO; these two are BigNumber-specific
-      if (BN_SPECIFIC_METHODS.has(method)) addTodoComment(path);
+        if (!isKnownBigNumber(obj)) {
+      if (BN_SPECIFIC_METHODS.has(method)) {
+        addTodoComment(path);
+      } else if (['add', 'sub', 'mul', 'div'].includes(method)) {
+        // Generic names, so skip receivers that are obviously a Set or Map.
+        const o = obj as unknown as { name?: string; property?: { name?: string } };
+        const receiverText = o.name ?? o.property?.name ?? '';
+        if (!/\b(set|map|list|queue|stack|seen|visited)\b/i.test(receiverText)) {
+          addTodoComment(
+            path,
+            `.${method}() only exists on v5 BigNumbers; if this receiver is a bigint in v6, use the operator instead`
+          );
+        }
+      }
       continue;
     }
+
     const left = resolveReceiver(obj);
 
     if (method === 'toNumber') {
