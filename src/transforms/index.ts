@@ -150,3 +150,5 @@ export function runAll(
     appliedTransforms,
   };
 }
+
+export { updatePackageJson } from './updatePackageJson';
