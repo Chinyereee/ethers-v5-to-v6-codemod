@@ -111,8 +111,11 @@ export function migrateDirectory(dir: string, options: MigrateOptions = {}): Mig
     });
   }
 
+    // Bump ethers only if a source file was migrated, or the repo ends up on v6 with v5 code.
+  if (result.modified.length > 0) {
     result.packageJson = updatePackageJson(dir, options.dryRun);
-  if (result.packageJson.changed) result.modified.push('package.json');
+    if (result.packageJson.changed) result.modified.push('package.json');
+  }
 
   result.transformsApplied = PIPELINE_ORDER.filter((t) => applied.has(t));
   return result;
