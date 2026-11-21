@@ -79,19 +79,14 @@ An automated jscodeshift codemod that migrates ethers.js v5 codebases to v6. Run
 
 ## Real-world results
 
-Tested against Uniswap v3-periphery (ethers `^5.0.8`) — a production-grade codebase with 16,000+ lines across 50+ TypeScript files.
+Run on 14 Nov 2026 through `migrateDirectory()`, the same call the x402 engine makes.
 
-| Metric | Result |
-|--------|--------|
-| Repository | [Uniswap/v3-periphery](https://github.com/Uniswap/v3-periphery) |
-| Ethers files scanned | 31 |
-| Files automatically migrated | 28 |
-| Files needing AI review | 3 |
-| Automated coverage | **90.3%** |
-| False positives | **0** |
-| Lines changed | 502 (231 insertions, 271 deletions) |
+| Repository | What happened |
+|------------|---------------|
+| [Uniswap/v3-periphery](https://github.com/Uniswap/v3-periphery) (ethers `^5.0.8`) | 41 source files scanned, 31 import ethers, 29 files changed (28 source files and `package.json`). No crashes. 95 TODOs left for a person. Its tests were not run: its Hardhat and Waffle plugins still need ethers v5. |
+| ethers-v5-demo (3 source files) | 4 files changed with `package.json`. `npm install` and `npm start` run on v6 and print the same numbers as before. No TODOs. |
 
-Zero-false-positive claim validated separately by running against scaffold-eth-2 (already on ethers v6): 0 files changed, 0 TODOs.
+The TODOs are the point. Where the codemod cannot prove a value is a BigNumber, it flags the line and does not guess.
 
 ---
 
@@ -134,8 +129,6 @@ messages contain relative paths only, so the result is safe to return from an
 API that runs the codemod on untrusted repositories.
 
 ---
-
-## AI-Assisted Edge Cases
 
 ## AI-Assisted Edge Cases
 
@@ -279,7 +272,7 @@ Detects whether the file uses `import * as ethers` (namespace) or `import { util
 
 ### `bigNumber-to-bigint` — conservative static analysis
 
-Replaces `BigNumber.from(x)` with `BigInt(x)` and migrates instance methods to native operators and built-ins. To avoid false positives, the transform first builds a `knownBigNumbers` set by scanning all `VariableDeclarator` and `AssignmentExpression` nodes for direct `BigNumber.from()` assignments. Method calls (`.add()`, `.toNumber()`, etc.) are only automatically transformed when the receiver is in this set or is a direct `BigNumber.from()` call. For `.toNumber()` and `.toHexString()` on untracked receivers, a TODO comment is inserted. Generic arithmetic methods (`.add()`, `.sub()`, etc.) on untracked receivers are silently skipped — they're too common outside BigNumber contexts to flag safely. The transform runs in two phases: method rewrites first (to handle chained calls like `BigNumber.from(x).toNumber()` atomically), then standalone `BigNumber.from()` replacement.
+Replaces `BigNumber.from(x)` with `BigInt(x)` and migrates instance methods to native operators and built-ins. To avoid false positives, the transform first builds a `knownBigNumbers` set by scanning all `VariableDeclarator` and `AssignmentExpression` nodes for direct `BigNumber.from()` assignments. Method calls (`.add()`, `.toNumber()`, etc.) are only automatically transformed when the receiver is in this set or is a direct `BigNumber.from()` call. For `.toNumber()` and `.toHexString()` on untracked receivers, a TODO comment is inserted. Generic arithmetic methods (`.add()`, `.sub()`, `.mul()`, `.div()`) on untracked receivers get a TODO too, unless the receiver is named like a Set or Map. A few extra TODOs are better than code that crashes at runtime with no warning. The transform runs in two phases: method rewrites first (to handle chained calls like `BigNumber.from(x).toNumber()` atomically), then standalone `BigNumber.from()` replacement.
 
 ### `rename-providers` — 7 providers + type annotations
 
@@ -297,21 +290,17 @@ Removes deprecated v5 import specifiers (`utils`, `BigNumber`, `providers`) from
 
 ## Transform pipeline order
 
-```
-rename-utils
-     │
-     ▼
-bigNumber-to-bigint
-     │
-     ▼
-rename-providers
-     │
-     ▼
-gasPrice-to-feeData
-     │
-     ▼
-update-imports
-```
+ 1. deep-imports
+ 2. rename-utils
+ 3. bigNumber-to-bigint
+ 4. hexlify-numbers
+ 5. rename-providers
+ 6. rename-constants
+ 7. rename-contract-methods
+ 8. rename-provider-methods
+ 9. gasPrice-to-feeData
+10. await-getSigner
+11. update-imports      (always last)
 
 Order matters: `bigNumber-to-bigint` must run before `update-imports` (which removes the `BigNumber` import), and `rename-utils`/`rename-providers` must run before `update-imports` (which removes the `utils`/`providers` imports). Running `update-imports` last ensures it only removes specifiers that are genuinely no longer needed.
 
@@ -323,7 +312,7 @@ Order matters: `bigNumber-to-bigint` must run before `update-imports` (which rem
 npm test
 ```
 
-100 tests across 5 suites — one suite per transform. Tests cover:
+261 tests across the transforms, the parser and migrateDirectory(). Run npm test for the current count. Tests cover:
 
 - All named patterns (inline unit tests per transform)
 - Namespace import style (`import * as ethers`)
@@ -343,7 +332,7 @@ To add a new transform:
 
 2. **Add it to the pipeline in `src/transforms/index.ts`** and `src/run.ts` (the `PIPELINE` array). Place it before `update-imports`, and consider whether it needs to run before or after `bigNumber-to-bigint` based on whether it touches the same nodes.
 
-3. **Write tests in `tests/your-transform-name.test.ts`** — cover both namespace and destructured import styles, at least one fixture file in `tests/fixtures/your-transform-name/`, and an idempotency test. Run `npm test` to confirm all 100 existing tests still pass.
+3. **Write tests in `tests/your-transform-name.test.ts`** — cover both namespace and destructured import styles, at least one fixture file in `tests/fixtures/your-transform-name/`, and an idempotency test. Run `npm test` to confirm all existing tests still pass.
 
 ---
 

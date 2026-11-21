@@ -206,11 +206,13 @@ describe('bigNumber-to-bigint – TODO comments for untracked receivers', () => 
     expect(result).toContain('unknownBigNumber.toHexString()');
   });
 
-  it('does NOT add TODO for .add() on untracked (too generic)', () => {
-    const input = named('const r = someArray.add(1);');
-    const result = applyTransform(transform, input);
-    expect(result).not.toContain('TODO');
-    expect(result).toContain('someArray.add(1)');
+  it('adds a TODO for .add() on an untracked receiver, but not on one named like a Set', () => {
+    const flagged = applyTransform(transform, named('const r = someArray.add(1);'));
+    expect(flagged).toContain('TODO(ethers-codemod)');
+    expect(flagged).toContain('someArray.add(1)');
+
+    const skipped = applyTransform(transform, named('const seen = new Set();\nseen.add(1);'));
+    expect(skipped).not.toContain('TODO');
   });
 
   it('does not transform anything when no ethers import present', () => {
