@@ -1,7 +1,7 @@
 {
   "name": "ethers-v5-to-v6",
   "version": "1.1.0",
-  "description": "Automates 90.3% of the ethers.js v5 to v6 migration",
+  "description": "Migrates ethers.js v5 code to v6 with jscodeshift. Converts what it can prove and flags the rest with TODO comments.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

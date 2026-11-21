@@ -1,5 +1,7 @@
 # ethers/5-to-6
 
+> This describes the codemod as it stood before the hackathon (up to commit `9d46e3f`, 8 Nov 2026). For the current state, see README.md.
+
 Built this after watching our team spend days manually migrating a v5 
 codebase line by line. There had to be a better way than ctrl+F and pray.
 

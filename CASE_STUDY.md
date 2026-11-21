@@ -1,5 +1,7 @@
 # I automated 90% of the ethers.js v5 → v6 migration using codemods and AI
 
+> This describes the codemod as it stood before the hackathon (up to commit `9d46e3f`, 8 Nov 2026). For the current state, see README.md.
+
 ethers v6 dropped a breaking change on every project that touched BigNumber, utils, or providers — which is basically every DeFi frontend ever written. The migration guide listed over 40 breaking changes. Some were simple renames. Some required understanding whether a variable was a BigNumber before deciding what to do with it. Doing this by hand across 31 files is exactly the kind of work that makes engineers quit. I built a codemod pipeline to handle the mechanical ones automatically — and wrote AI prompts for the rest.
 
 ---
